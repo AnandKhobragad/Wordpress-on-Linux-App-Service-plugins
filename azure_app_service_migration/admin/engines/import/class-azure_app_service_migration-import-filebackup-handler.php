@@ -2,12 +2,7 @@
 
 class Azure_app_service_migration_Import_FileBackupHandler
 {
-    public function __construct()
-    {
-        
-    }
-
-    public function handle_upload_chunk()
+    public static function handle_upload_chunk()
     {
         $param = isset($_POST['param']) ? $_POST['param'] : "";
 
@@ -23,7 +18,7 @@ class Azure_app_service_migration_Import_FileBackupHandler
             }
 
             // Get the latest chunk number in the upload directory
-            $latestChunkNumber = $this->getLatestChunkNumber($uploadDir);
+            $latestChunkNumber = self::getLatestChunkNumber($uploadDir);
 
             // Generate the chunk filename based on the latest chunk number
             $chunkFilename = $uploadDir . 'chunk_' . $latestChunkNumber;
@@ -48,7 +43,7 @@ class Azure_app_service_migration_Import_FileBackupHandler
         wp_die(); // Terminate the request
     }
 
-    private function getLatestChunkNumber($uploadDir)
+    private static function getLatestChunkNumber($uploadDir)
     {
         $latestChunkNumber = 0;
         $counterFilePath = $uploadDir . 'chunk_counter.txt';
@@ -72,91 +67,104 @@ class Azure_app_service_migration_Import_FileBackupHandler
         return $latestChunkNumber;
     }   
 
-    public function handle_combine_chunks()
+    public static function handle_combine_chunks($params)
     {
-        // continue executing if client side request aborts
-        ignore_user_abort(true);
+        // exit if chunk number is not provided
+        if (!isset($params['chunk_index']))
+        {
+            throw new Exception("Couldn't create zip file. Invalid chunk number provided.");
+            return;
+        }
 
-        $param = isset($_POST['param']) ? $_POST['param'] : "";
-        $retain_w3tc_config_value = isset($_POST['retain_w3tc_config']) ? $_POST['retain_w3tc_config'] : "";
+        // register start time
+        $start = microtime( true );
+        $timeout = isset($params['timeout'])
+                    ? $params['timeout']
+                    : 10;
 
-        if (!empty($param) && $param === "wp_ImportFile") {
-            // Handle the combine chunks action here
-            $uploadDir = AASM_IMPORT_ZIP_LOCATION;
-            $chunkPrefix = 'chunk_';
-            $originalFilename = 'importfile.zip'; // Adjust the original file name
+        $chunkIndex = $params['chunk_index'];
 
-            // Remove the file if it already exists
-            $filePath = $uploadDir . $originalFilename;
-            if (file_exists($filePath) && is_file($filePath)) {
-                unlink($filePath);
-            }
-            
-            // Create the original file
-            $originalFilePath = $uploadDir . $originalFilename;
+        // Handle the combine chunks action here
+        $uploadDir = AASM_IMPORT_ZIP_LOCATION;
+        $chunkPrefix = 'chunk_';
+        $originalFilename = 'importfile.zip'; // Adjust the original file name
 
-            // Open the original file in write mode
-            $originalFile = fopen($originalFilePath, 'wb');
+        // Remove the file if it already exists
+        $filePath = $uploadDir . $originalFilename;
+        if (file_exists($filePath) && is_file($filePath)) {
+            unlink($filePath);
+        }
+        
+        // Create the original file
+        $originalFilePath = $uploadDir . $originalFilename;
 
-            if ($originalFile !== false) {
-                $chunkIndex = 0;
-                $chunkFile = $uploadDir . $chunkPrefix . $chunkIndex;
+        // Open the original file in write mode
+        $originalFile = fopen($originalFilePath, 'wb');
 
-                while (file_exists($chunkFile)) {
-                    set_time_limit(0);
-                    // Read the content of the current chunk file
-                    $chunkContent = file_get_contents($chunkFile);
+        $completed = true;
+        if ($originalFile !== false) {
+            $chunkFile = $uploadDir . $chunkPrefix . $chunkIndex;
 
-                    if ($chunkContent !== false) {
-                        // Write the chunk content to the original file
-                        fwrite($originalFile, $chunkContent);
+            while (file_exists($chunkFile)) {
+                if ( ( microtime( true ) - $start ) > $timeout ) {
+					$completed = false;
+					break;
+				}
+                
+                // Read the content of the current chunk file
+                $chunkContent = file_get_contents($chunkFile);
 
-                        // Delete the chunk file after combining
-                        unlink($chunkFile);
-                    } else {
-                        // Error handling if failed to read chunk content
-                        http_response_code(500);
-                        echo 'Failed to read chunk file: ' . $chunkFile;
-                        fclose($originalFile);
-                        return;
-                    }
+                if ($chunkContent !== false) {
+                    // Write the chunk content to the original file
+                    fwrite($originalFile, $chunkContent);
 
-                    $chunkIndex++;
-                    $chunkFile = $uploadDir . $chunkPrefix . $chunkIndex;
+                    // Delete the chunk file after combining
+                    unlink($chunkFile);
+                } else {
+                    // Error handling if failed to read chunk content
+                    http_response_code(500);
+                    fclose($originalFile);
+                    throw new Exception('Failed to read chunk file: '. $chunkFile);
                 }
 
-                // Close the original file
-                fclose($originalFile);
+                $chunkIndex++;
+                $chunkFile = $uploadDir . $chunkPrefix . $chunkIndex;
+            }
+            // Close the original file
+            fclose($originalFile);
+            
+            $params['completed'] = $completed;
+            $params['chunk_index'] = $chunkIndex; 
+            if ($completed) {
                 $counterFilePath = $uploadDir . 'chunk_counter.txt';
 
                 // Update the counter file with the value 0
                 file_put_contents($counterFilePath, '-1');
-                // Perform any further actions after combining the chunks
-                
-                // Create the $params array and assign the value of $retain_w3tc_config_value
-                $params = array(
-                    'retain_w3tc_config' => $retain_w3tc_config_value,
-                );
-                // Call the import() method and pass the $params variable
-                Azure_app_service_migration_Import_Controller::import($params, $filePath);
 
-                // Send a success response
-                echo 'Chunks combined successfully!';
-            } else {
-                // Error handling if failed to open the original file
-                http_response_code(500);
-                echo 'Failed to open the original file: ' . $originalFilePath;
+                unset( $params['chunk_index'] );
+
+                // sets enumerate_content as the next function to be executed
+                $params['priority'] = 10;
             }
-        } else {
-            // Send an error response
-            http_response_code(400);
-            echo 'Invalid action parameter.';
-        }
 
-        wp_die(); // Terminate the request
+            return $params;
+            
+            // Perform any further actions after combining the chunks
+            
+            // Create the $params array and assign the value of $retain_w3tc_config_value
+            //$params = array(
+            //    'retain_w3tc_config' => $retain_w3tc_config_value,
+            //);
+            // Call the import() method and pass the $params variable
+            //Azure_app_service_migration_Import_Controller::import($params, $filePath);
+        } else {
+            // Error handling if failed to open the original file
+            http_response_code(500);
+            throw new Exception( 'Failed to open the original file: ' . $originalFilePath );
+        }
     }
 
-    public function delete_chunks($uploadDir)
+    public static function delete_chunks($uploadDir)
     {
         $uploadDir = AASM_IMPORT_ZIP_LOCATION;
         $chunkFiles = glob($uploadDir . 'chunk_*');

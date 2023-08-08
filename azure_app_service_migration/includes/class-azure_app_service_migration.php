@@ -232,7 +232,6 @@ class Azure_app_service_migration
      */
     private function define_admin_hooks()
     {
-
         $plugin_admin = new Azure_app_service_migration_Export_Controller($this->get_plugin_name(), $this->get_version());
 
         $this->loader->add_action('admin_enqueue_scripts', $plugin_admin, 'enqueue_styles');
@@ -245,15 +244,24 @@ class Azure_app_service_migration
 
         $importaxHandler = new Azure_app_service_migration_Import_FileBackupHandler();
         
-        $this->loader->add_action('wp_ajax_handle_upload_chunk', $importaxHandler , 'handle_upload_chunk');
+        $this->loader->add_action('wp_ajax_handle_upload_chunk', 'Azure_app_service_migration_Import_FileBackupHandler::handle_upload_chunk');
 
-        $this->loader->add_action('wp_ajax_handle_combine_chunks', $importaxHandler , 'handle_combine_chunks');
+        $this->loader->add_action('wp_ajax_handle_combine_chunks', 'Azure_app_service_migration_Import_FileBackupHandler::handle_combine_chunks');
 
-        $this->loader->add_action('wp_ajax_delete_chunks', $importaxHandler, 'delete_chunks');
+        $this->loader->add_action('wp_ajax_delete_chunks', 'Azure_app_service_migration_Import_FileBackupHandler::delete_chunks');
 
         // Register status update AJAX handler
         $statusUpdateHandler = new Azure_app_service_migration_Import_AjaxHandler();
         $this->loader->add_action('wp_ajax_get_migration_status', $statusUpdateHandler , 'get_migration_status');
+
+        // register import ajax handler
+        add_action('wp_ajax_aasm_import','Azure_app_service_migration_Import_Controller::import');
+        add_action('wp_ajax_nopriv_aasm_import', 'Azure_app_service_migration_Import_Controller::import');
+
+        // register function hooks for import
+        add_filter( 'aasm_import', 'Azure_app_service_migration_Import_FileBackupHandler::handle_combine_chunks', 5 );
+		add_filter( 'aasm_import', 'Azure_app_service_migration_Import_Content::enumerate_content', 10 );
+		add_filter( 'aasm_import', 'Azure_app_service_migration_Import_Content::extract_content', 50 );
 
     }
 

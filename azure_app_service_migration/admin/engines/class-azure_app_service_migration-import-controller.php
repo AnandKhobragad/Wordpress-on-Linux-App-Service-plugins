@@ -1,7 +1,70 @@
 <?php
 class Azure_app_service_migration_Import_Controller {
 
-    public static function import($params, $import_file_path) {
+    public static function import($params) {
+
+		// Continue execution when user aborts
+		@ignore_user_abort( true );
+
+		// Set maximum execution time
+		@set_time_limit( 0 );
+
+		// Set maximum time in seconds a script is allowed to parse input data
+		@ini_set( 'max_input_time', '-1' );
+
+		// Set maximum backtracking steps
+		@ini_set( 'pcre.backtrack_limit', PHP_INT_MAX );
+
+		// Set params
+		if ( empty( $params ) ) {
+			$params = stripslashes_deep( array_merge( $_GET, $_POST ) );
+		}
+
+		// Set priority
+		if ( ! isset( $params['priority'] ) ) {
+			$params['priority'] = 5;
+		}
+
+		// Set completed flag
+		if ( ! isset( $params['completed'] ) ) {
+			$params['completed'] = false;
+		}
+
+		// Loop over filters
+		if ( ( $filters = AASM_Common_Utils::get_filter_callbacks( 'aasm_import' ) ) ) {
+			while ( $hooks = current( $filters ) ) {
+				if ( intval( $params['priority'] ) === key( $filters ) ) {
+					foreach ( $hooks as $hook ) {
+						try {
+							// Run function hook
+							$params = call_user_func_array( $hook['function'], array( $params ) );
+						} catch ( Exception $e ) {
+							Azure_app_service_migration_Custom_Logger::handleException($e);
+							exit;
+						}
+					}
+				
+					$response = wp_remote_post(                                                                                                        
+						admin_url( 'admin-ajax.php?action=aasm_import' ) ,
+						array(                                               
+						'method'    => 'POST',
+						'timeout'   => 5,                                        
+						'blocking'  => false,
+						'sslverify' => false,
+						'headers'   => AASM_Common_Utils::http_export_headers(array()),                                             
+						'body'      => $params,
+						'cookies'   => array(),
+						)                                           
+					);
+					exit;
+				}
+				next( $filters );
+			}
+		}		
+    }
+
+	public static function base_import($params) {
+		$import_file_path = AASM_IMPORT_ZIP_LOCATION . 'importfile.zip';
 
 		// delete existing log file
 		Azure_app_service_migration_Custom_Logger::delete_log_file(AASM_IMPORT_SERVICE_TYPE);
@@ -19,5 +82,5 @@ class Azure_app_service_migration_Import_Controller {
 
 		// Log Import completion status and update status option in database
 		Azure_app_service_migration_Custom_Logger::done(AASM_IMPORT_SERVICE_TYPE);
-    }
+	}
 }

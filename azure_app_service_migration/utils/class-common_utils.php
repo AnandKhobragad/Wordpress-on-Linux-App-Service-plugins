@@ -33,4 +33,45 @@ class AASM_Common_Utils {
     public static function replace_forward_slash_with_directory_separator ( $dir ) {
         return str_replace("/", DIRECTORY_SEPARATOR, $dir);
     }
+
+    // gets all the callback functions registered to a filter
+    public static function get_filter_callbacks($filter_tag) {
+        global $wp_filter;
+
+        $filters = array();
+
+        if ( isset( $wp_filter[ $filter_tag ] ) ) {
+            $filters = $wp_filter[ $filter_tag ];
+            if ( isset( $filters->callbacks ) ) {
+                $filters = $filters->callbacks;
+            }
+
+            ksort( $filters );
+        }
+        return $filters;
+    }
+
+    public function http_export_headers( $headers = array() ) {
+	
+        $user = "";
+        $password = "";
+
+        // Set user
+        if ( isset( $_SERVER['PHP_AUTH_USER'] ) ) {
+            $user = $SERVER['PHP_AUTH_USER'];
+        } elseif ( isset( $_SERVER['REMOTE_USER'] ) ) {
+            $user = $_SERVER['REMOTE_USER'];
+        }
+    
+        // Set password
+        if ( isset( $_SERVER['PHP_AUTH_PW'] ) ) {
+            $password = $_SERVER['PHP_AUTH_PW'];
+        }
+        
+        // Set Authorization header
+        if ( ( $hash = base64_encode( sprintf( '%s:%s', $user, $password ) ) ) ) {
+            $headers['Authorization'] = sprintf( 'Basic %s', $hash );
+        }
+        return $headers;
+    }	
 }
