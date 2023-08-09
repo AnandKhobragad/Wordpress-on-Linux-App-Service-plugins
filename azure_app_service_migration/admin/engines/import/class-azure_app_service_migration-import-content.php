@@ -12,20 +12,23 @@ class Azure_app_service_migration_Import_Content {
         $this->params = $params;
     }
 
-    public function import_content()
+    public static function import_content( $params )
     {
         Azure_app_service_migration_Custom_Logger::logInfo(AASM_IMPORT_SERVICE_TYPE, 'Starting wp-content import.', true);
         // Flag to hold if file data has been processed
 		$completed = true;
 
+        $import_zip_path = isset($params['import_zip_path']) 
+                                ? $params['import_zip_path']
+                                : AASM_IMPORT_ZIP_LOCATION;
 		// Start time
         // To Do: display time taken in UI
 		$start = microtime( true );
 
 		// create extractor object for import zip file
-		$archive = new AASM_Zip_Extractor( $this->import_zip_path );
+		$archive = new AASM_Zip_Extractor( $import_zip_path );
 
-        $files_to_exclude = $this->get_dropins();
+        $files_to_exclude = $get_dropins();
         $files_to_exclude = array_merge(
             $files_to_exclude,
             array(
@@ -35,7 +38,7 @@ class Azure_app_service_migration_Import_Content {
         );
 
         // exclude extracting to w3 total cache plugin if retain AFD/CDN/BlobStorage enabled
-        if ( isset( $this->params['retain_w3tc_config'] ) && strtoupper($this->params['retain_w3tc_config']) == "TRUE") {
+        if ( isset( $params['retain_w3tc_config'] ) && strtoupper($params['retain_w3tc_config']) == "TRUE") {
 			$files_to_exclude = array_merge(
                 $files_to_exclude,
                 array(
@@ -49,26 +52,42 @@ class Azure_app_service_migration_Import_Content {
 		}
 
         Azure_app_service_migration_Custom_Logger::logInfo(AASM_IMPORT_SERVICE_TYPE, 'Extracting wp-content from uploaded zip file.', true);
+
+        $extract_result = array();
         // Extract all WP-CONTENT files from archive to WP_CONTENT_DIR
         try {
-            $archive->extract( ABSPATH, $files_to_exclude );
-        } catch (AASM_Archive_Target_Dir_Exception $ex) {
+            $extract_result = $archive->extract( ABSPATH, $files_to_exclude );
+        } catch (Exception $ex) {
             $completed = false;
+            throw $ex;
+        }
+
+        $params['completed'] = $extract_result['completed'];
+
+        if (! $params['completed']) {
+            $params['zip_entry_starting_point'] = $extract_result['last_zip_entry'];
+            return $params;
+        }
+        else {
+            // remove import-content specific params if completed
+            unset($params['zip_entry_starting_point']);
         }
 
         // upload all files in wp-content/uploads/ folder to blob storage (if enabled)
-        $this->upload_to_blob_storage($this->params);
+        //$this->upload_to_blob_storage($this->params);
 
         // delete cache files produced by w3tc plugin
-        if ( isset( $this->params['retain_w3tc_config'] ) && strtoupper($this->params['retain_w3tc_config']) == "TRUE") {
+        if ( isset( $params['retain_w3tc_config'] ) && strtoupper($params['retain_w3tc_config']) == "TRUE") {
             Azure_app_service_migration_Custom_Logger::logInfo(AASM_IMPORT_SERVICE_TYPE, 'Refreshing W3 Total Cache files.', true);
-            $this->delete_w3tc_cache_files();
+            self::delete_w3tc_cache_files();
         }
 
         Azure_app_service_migration_Custom_Logger::logInfo(AASM_IMPORT_SERVICE_TYPE, 'Finished Importing wp-content.', true);
+
+        return $params;
     }
 
-    private function delete_w3tc_cache_files()
+    private static function delete_w3tc_cache_files()
     {
         try {
             AASM_Common_Utils::delete_file(AZURE_APP_SERVICE_MIGRATION_PLUGIN_PATH . AASM_W3TC_ADVANCED_CACHE_PATH);

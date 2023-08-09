@@ -110,7 +110,7 @@ class Azure_app_service_migration_Import_FileBackupHandler
 					$completed = false;
 					break;
 				}
-                
+
                 // Read the content of the current chunk file
                 $chunkContent = file_get_contents($chunkFile);
 
@@ -145,6 +145,7 @@ class Azure_app_service_migration_Import_FileBackupHandler
 
                 // sets enumerate_content as the next function to be executed
                 $params['priority'] = 10;
+                $params['zip_entry_starting_point'] = null;
             }
 
             return $params;

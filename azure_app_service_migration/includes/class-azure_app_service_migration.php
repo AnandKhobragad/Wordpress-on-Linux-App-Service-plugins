@@ -260,8 +260,7 @@ class Azure_app_service_migration
 
         // register function hooks for import
         add_filter( 'aasm_import', 'Azure_app_service_migration_Import_FileBackupHandler::handle_combine_chunks', 5 );
-		add_filter( 'aasm_import', 'Azure_app_service_migration_Import_Content::enumerate_content', 10 );
-		add_filter( 'aasm_import', 'Azure_app_service_migration_Import_Content::extract_content', 50 );
+		add_filter( 'aasm_import', 'Azure_app_service_migration_Import_Content::import_content', 10 );
 
     }
 

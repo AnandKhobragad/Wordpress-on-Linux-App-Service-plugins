@@ -43,6 +43,12 @@ class Azure_app_service_migration_Import_Controller {
 							exit;
 						}
 					}
+
+					// exit after the last function of import process is completed
+					if ($params['priority'] == 10 && $params['completed']) {
+						Azure_app_service_migration_Custom_Logger::logInfo(AASM_IMPORT_SERVICE_TYPE, 'Import successfully completed.', true);
+						exit;
+					}
 				
 					$response = wp_remote_post(                                                                                                        
 						admin_url( 'admin-ajax.php?action=aasm_import' ) ,
