@@ -106,6 +106,7 @@ class Azure_app_service_migration_Import_FileBackupHandler
             $chunkFile = $uploadDir . $chunkPrefix . $chunkIndex;
 
             while (file_exists($chunkFile)) {
+                Azure_app_service_migration_Custom_Logger::logInfo(AASM_IMPORT_SERVICE_TYPE, 'Extracting chunk file: ' . $chunkFile, true);
                 if ( ( microtime( true ) - $start ) > $timeout ) {
 					$completed = false;
 					break;
@@ -145,7 +146,7 @@ class Azure_app_service_migration_Import_FileBackupHandler
 
                 // sets enumerate_content as the next function to be executed
                 $params['priority'] = 10;
-                $params['zip_entry_starting_point'] = null;
+                $params['zip_start_index'] = 0;
             }
 
             return $params;

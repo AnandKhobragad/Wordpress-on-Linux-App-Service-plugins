@@ -20,15 +20,15 @@ class Azure_app_service_migration_Import_Content {
 
         $import_zip_path = isset($params['import_zip_path']) 
                                 ? $params['import_zip_path']
-                                : AASM_IMPORT_ZIP_LOCATION;
+                                : AASM_IMPORT_ZIP_FILE;
 		// Start time
-        // To Do: display time taken in UI
 		$start = microtime( true );
 
 		// create extractor object for import zip file
 		$archive = new AASM_Zip_Extractor( $import_zip_path );
 
-        $files_to_exclude = $get_dropins();
+        $files_to_exclude = array();
+        //$files_to_exclude = self::get_dropins();
         $files_to_exclude = array_merge(
             $files_to_exclude,
             array(
@@ -56,21 +56,21 @@ class Azure_app_service_migration_Import_Content {
         $extract_result = array();
         // Extract all WP-CONTENT files from archive to WP_CONTENT_DIR
         try {
-            $extract_result = $archive->extract( ABSPATH, $files_to_exclude );
+            $extract_result = $archive->extract( ABSPATH, $files_to_exclude, $params['zip_start_index'] );
         } catch (Exception $ex) {
-            $completed = false;
             throw $ex;
         }
 
         $params['completed'] = $extract_result['completed'];
 
-        if (! $params['completed']) {
-            $params['zip_entry_starting_point'] = $extract_result['last_zip_entry'];
-            return $params;
+        if (params['completed']) {
+            $params['priority'] = 20;
+            // remove import-content specific params if completed
+            unset($params['zip_start_index']);
         }
         else {
-            // remove import-content specific params if completed
-            unset($params['zip_entry_starting_point']);
+            $params['zip_start_index'] = $extract_result['last_zip_index'];
+            return $params;
         }
 
         // upload all files in wp-content/uploads/ folder to blob storage (if enabled)
@@ -146,7 +146,7 @@ class Azure_app_service_migration_Import_Content {
     }
 
     // Returns essential WordPress files stored in wp-content/
-    private function get_dropins()
+    private static function get_dropins()
     {
         $dropins = array_keys( _get_dropins() );
         

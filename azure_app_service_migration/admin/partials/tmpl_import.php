@@ -250,9 +250,12 @@ function combineChunksWithRetry(
     url: ajaxurl,
     type: 'POST',
     data: {
-      action: 'handle_combine_chunks',
+      action: 'aasm_import',
       param: 'wp_ImportFile',
       retain_w3tc_config: w3tc_checkbox.checked,
+      chunk_index: 0,
+      priority: 5,
+      is_first_request: true,
     },
     success: function (response) {
       console.log(response);
@@ -260,11 +263,11 @@ function combineChunksWithRetry(
       var fileInput = document.getElementById('importFile');
       fileInput.value = '';
       document.getElementById('progressBarContainer').style.display = 'none'; // Hide the progress bar
-      deleteChunks(); // Delete the chunk files
+      //deleteChunks(); // Delete the chunk files
     },
     error: function (xhr, status, error) {
       console.log(error);
-      fileInfo.textContent = 'Import exited. Check Import Log File for completion...';
+      fileInfo.textContent = `Import Failed with error: ${error}`;
       /*
       if (retries < maxRetries) {
         retries++;

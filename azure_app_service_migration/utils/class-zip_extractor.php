@@ -14,9 +14,12 @@ class AASM_Zip_Extractor {
         }*/
     }
     
-    public function extract( $destination_dir, $files_to_exclude = [], $zip_entry_starting_point ) {
+    public function extract( $destination_dir, $files_to_exclude = [], $zip_start_index ) {
         // reset time counter to prevent timeout
         set_time_limit(0);
+
+        // Start time
+		$start = microtime( true );
 
         $destination_dir = $this->replace_forward_slash_with_directory_separator($destination_dir);
         if ($destination_dir === null) {
@@ -24,54 +27,33 @@ class AASM_Zip_Extractor {
         }
 
         Azure_app_service_migration_Custom_Logger::logInfo(AASM_IMPORT_SERVICE_TYPE, 'Reading Zip file for extracting wp-content.', true);
+        $zip = new ZipArchive();
         try {
-            $zip = zip_open($this->zip_path);
+            $zip->open($this->zip_path);
         } catch ( Exception $ex ) {
-            Azure_app_service_migration_Custom_Logger::handleException($ex);
+            throw $ex;
         }
+        Azure_app_service_migration_Custom_Logger::logInfo(AASM_IMPORT_SERVICE_TYPE, 'finished reading zip file', true);
 
-        // Defines if the current file is to be skipped
-        // A file is skipped if it has been extracted previously
-        $skip_file = true;
-
+        // initialize completed flag
+        $completed = true;
+        
         // total number of files in the zip file
-        $totalEntries = $zip->numFiles;
+        $zip_num_files = $zip->numFiles;
 
         // track last zip_entry extracted in this session
-        $last_zip_entry = null;
+        $last_zip_index = $zip_start_index;
 
-        // maintain counter of zip_entry objects
-        $count=0;
-        while ($zip_entry = zip_read($zip)) {
+        for ($i = $zip_start_index; $i<$zip_num_files; $i++) {
+            Azure_app_service_migration_Custom_Logger::logInfo(AASM_IMPORT_SERVICE_TYPE, 'Reading zip file index: ' . strval($i), true);
             // break when timeout (20s) is reached
             if ( ( microtime( true ) - $start ) > 20 ) {
-                
-                // Throw exception if starting point could not be reached in 20s 
-                if ( $skip_file ) {
-                    throw new Exception('Failed to extract wp-content... Infinite loop encountered.');
-                }
-
-                $last_zip_entry = zip_entry_name($zip_entry);
+                $last_zip_index = $i;
                 $completed = false;
                 break;
             }
-            $count++;
 
-            // if zip_entry_starting_point is null, assign it to the first instance of zip_entry
-            // This ensures we start extracting from beginning of zip file
-            if (is_null($zip_entry_starting_point) && $count === 1)
-                $zip_entry_starting_point = zip_entry_name($zip_entry);
-            
-            // Start extracting when zip_entry_starting_point is encountered
-            if ( zip_entry_name($zip_entry) === $zip_entry_starting_point ) {
-                $skip_file = false;
-            }
-
-            // continue to next zip_entry if the current one has been extracted in previous attempts
-            if ( $skip_file )
-                continue;
-            
-            $filename = $this->replace_forward_slash_with_directory_separator(zip_entry_name($zip_entry));
+            $filename = $this->replace_forward_slash_with_directory_separator($zip->getNameIndex($i));
             // remove AASM_IMPORT_ZIP_FILE_NAME prefix in $filename
             if (str_starts_with($filename, AASM_IMPORT_ZIP_FILE_NAME . DIRECTORY_SEPARATOR)) {
                 $filename = substr($filename, strlen(AASM_IMPORT_ZIP_FILE_NAME)+1);
@@ -79,22 +61,20 @@ class AASM_Zip_Extractor {
 
             // determine if this file is to be excluded
             $should_exclude_file = false;
-            for ( $i = 0; $i < count( $files_to_exclude ); $i++ ) {
-                if ( str_starts_with( $filename , $this->replace_forward_slash_with_directory_separator( $files_to_exclude[ $i ] ) )) {
+            for ( $j = 0; $j < count( $files_to_exclude ); $j++ ) {
+                if ( str_starts_with( $filename , $this->replace_forward_slash_with_directory_separator( $files_to_exclude[ $j ] ) )) {
                     $should_exclude_file = true;
                     break;
                 }
             }
 
-            // extract only wp-content files
-            if(!str_starts_with($filename, 'wp-content' . DIRECTORY_SEPARATOR))
-                $should_exclude_file = true;
-            
-            if ($should_exclude_file === false && zip_entry_open($zip, $zip_entry, "r")) {
-                $buf = zip_entry_read($zip_entry, zip_entry_filesize($zip_entry));
-                $path_file = $this->replace_forward_slash_with_directory_separator($destination_dir . $filename);
+            if ($should_exclude_file === false) {
+                $path_file = $this->replace_forward_slash_with_directory_separator($destination_dir);
+                if (str_starts_with($filename, AASM_DATABASE_RELATIVE_PATH_IN_ZIP)) {
+                    $path_file = $this->replace_forward_slash_with_directory_separator(AASM_DATABASE_TEMP_DIR);
+                }
+                
                 $new_dir = dirname($path_file);
-
                 if (!str_ends_with($new_dir, DIRECTORY_SEPARATOR)) {
                     $new_dir .= DIRECTORY_SEPARATOR;
                 }
@@ -105,21 +85,19 @@ class AASM_Zip_Extractor {
                 }
                 
                 // write only files to new directory
-                if ( !str_ends_with($path_file, DIRECTORY_SEPARATOR)) {
-                    $fp = fopen($path_file, "w");
-                    fwrite($fp, $buf);
-                    fclose($fp);
+                if ( !str_ends_with($filename, DIRECTORY_SEPARATOR)) {
+                    if ( ! $zip->extractTo($path_file, $filename)) {
+                        Azure_app_service_migration_Custom_Logger::logInfo(AASM_IMPORT_SERVICE_TYPE, 'Failed to extract the file: ' . $filename, true);
+                    }
                 }
-                
-                zip_entry_close($zip_entry);            
             }
         }
 
-        zip_close($zip);
+        $zip->close();
 
         return array (
             'completed' => $completed,
-            'last_zip_entry' => $last_zip_entry,
+            'last_zip_index' => $last_zip_index,
         );
     }
 

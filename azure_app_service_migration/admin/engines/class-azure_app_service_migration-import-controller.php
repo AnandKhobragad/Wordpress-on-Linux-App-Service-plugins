@@ -24,11 +24,19 @@ class Azure_app_service_migration_Import_Controller {
 		if ( ! isset( $params['priority'] ) ) {
 			$params['priority'] = 5;
 		}
+		
+		if ( isset($params['is_first_request']) && $params['is_first_request']) {
+			// initalize import log file
+			Azure_app_service_migration_Custom_Logger::init(AASM_IMPORT_SERVICE_TYPE);
+			
+			// clear DB temp directory
+			AASM_Common_Utils::clear_directory_recursive(AASM_DATABASE_TEMP_DIR);
 
-		// Set completed flag
-		if ( ! isset( $params['completed'] ) ) {
-			$params['completed'] = false;
+			// clear is_first_request param
+			unset($params['is_first_request']);
 		}
+
+		$params['completed'] = false;
 
 		// Loop over filters
 		if ( ( $filters = AASM_Common_Utils::get_filter_callbacks( 'aasm_import' ) ) ) {
@@ -45,7 +53,7 @@ class Azure_app_service_migration_Import_Controller {
 					}
 
 					// exit after the last function of import process is completed
-					if ($params['priority'] == 10 && $params['completed']) {
+					if ($params['priority'] == 20 && $params['completed']) {
 						Azure_app_service_migration_Custom_Logger::logInfo(AASM_IMPORT_SERVICE_TYPE, 'Import successfully completed.', true);
 						exit;
 					}

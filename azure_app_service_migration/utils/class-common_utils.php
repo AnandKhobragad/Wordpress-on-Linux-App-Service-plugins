@@ -51,7 +51,7 @@ class AASM_Common_Utils {
         return $filters;
     }
 
-    public function http_export_headers( $headers = array() ) {
+    public static function http_export_headers( $headers = array() ) {
 	
         $user = "";
         $password = "";
