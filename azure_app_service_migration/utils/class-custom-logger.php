@@ -65,9 +65,8 @@ class Azure_app_service_migration_Custom_Logger
         if ($echo_status) {
             $migration_status = array( 'status' => 'error', 'message' => $error_message );
             echo json_encode($migration_status);
-
-            wp_die();
         }
+        wp_die();
     }
 
     // Custom error handler
