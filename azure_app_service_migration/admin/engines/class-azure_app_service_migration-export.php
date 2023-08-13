@@ -1,7 +1,7 @@
 <?php
-class Azure_app_service_migration_Import_Controller {
+class Azure_app_service_migration_Export {
 
-    public static function import($params) {
+    public static function export($params) {
 
 		// Continue execution when user aborts
 		@ignore_user_abort( true );
@@ -25,12 +25,10 @@ class Azure_app_service_migration_Import_Controller {
 			$params['priority'] = 5;
 		}
 		
+		// First time functions executed here
 		if ( isset($params['is_first_request']) && $params['is_first_request']) {
 			// initalize import log file
-			Azure_app_service_migration_Custom_Logger::init(AASM_IMPORT_SERVICE_TYPE);
-			
-			// clear DB temp directory
-			AASM_Common_Utils::clear_directory_recursive(AASM_DATABASE_TEMP_DIR);
+			Azure_app_service_migration_Custom_Logger::init(AASM_EXPORT_SERVICE_TYPE);
 
 			// clear is_first_request param
 			unset($params['is_first_request']);
