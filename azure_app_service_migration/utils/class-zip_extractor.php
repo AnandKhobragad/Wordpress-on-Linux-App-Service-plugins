@@ -74,7 +74,7 @@ class AASM_Zip_Extractor {
                     $path_file = $this->replace_forward_slash_with_directory_separator(AASM_DATABASE_TEMP_DIR);
                 }
                 
-                $new_dir = dirname($path_file);
+                $new_dir = dirname($path_file . $filename);
                 if (!str_ends_with($new_dir, DIRECTORY_SEPARATOR)) {
                     $new_dir .= DIRECTORY_SEPARATOR;
                 }
