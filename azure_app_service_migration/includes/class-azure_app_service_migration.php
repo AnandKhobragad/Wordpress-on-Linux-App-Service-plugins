@@ -145,6 +145,11 @@ class Azure_app_service_migration
         +require_once plugin_dir_path(dirname(__FILE__)) . 'admin/engines/class-azure_app_service_migration-import-controller.php';
 
         /**
+        +        * The class responsible for calling all actions for Export.
+        +        */
+        +require_once plugin_dir_path(dirname(__FILE__)) . 'admin/engines/class-azure_app_service_migration-export.php';
+
+        /**
         +        * The class responsible for defining actions for wp-content import.
         +        */
         +require_once plugin_dir_path(dirname(__FILE__)) . 'admin/engines/import/class-azure_app_service_migration-import-content.php';
@@ -257,6 +262,10 @@ class Azure_app_service_migration
         $this->loader->add_action('wp_ajax_get_migration_status', $statusUpdateHandler , 'get_migration_status');
 
         // register import ajax handler
+        add_action('wp_ajax_aasm_import','Azure_app_service_migration_Import_Controller::import');
+        add_action('wp_ajax_nopriv_aasm_import', 'Azure_app_service_migration_Import_Controller::import');
+
+        // register export ajax handler
         add_action('wp_ajax_aasm_import','Azure_app_service_migration_Import_Controller::import');
         add_action('wp_ajax_nopriv_aasm_import', 'Azure_app_service_migration_Import_Controller::import');
 
