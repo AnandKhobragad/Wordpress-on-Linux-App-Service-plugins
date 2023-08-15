@@ -266,13 +266,18 @@ class Azure_app_service_migration
         add_action('wp_ajax_nopriv_aasm_import', 'Azure_app_service_migration_Import_Controller::import');
 
         // register export ajax handler
-        add_action('wp_ajax_aasm_import','Azure_app_service_migration_Import_Controller::import');
-        add_action('wp_ajax_nopriv_aasm_import', 'Azure_app_service_migration_Import_Controller::import');
+        add_action('wp_ajax_aasm_import','Azure_app_service_migration_Export::export');
+        add_action('wp_ajax_nopriv_aasm_import', 'Azure_app_service_migration_Export::export');
 
         // register function hooks for import
         add_filter( 'aasm_import', 'Azure_app_service_migration_Import_FileBackupHandler::handle_combine_chunks', 5 );
 		add_filter( 'aasm_import', 'Azure_app_service_migration_Import_Content::import_content', 10 );
         add_filter( 'aasm_import', 'Azure_app_service_migration_Import_Database::import_database', 20 );
+
+        // register function hooks for export
+        add_filter( 'aasm_export', 'Azure_app_service_migration_Import_FileBackupHandler::handle_combine_chunks', 5 );
+		add_filter( 'aasm_export', 'Azure_app_service_migration_Import_Content::import_content', 10 );
+        add_filter( 'aasm_export', 'Azure_app_service_migration_Import_Database::import_database', 20 );
     }
 
     /**

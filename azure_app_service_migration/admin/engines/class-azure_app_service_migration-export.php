@@ -27,9 +27,22 @@ class Azure_app_service_migration_Export {
 		
 		// First time functions executed here
 		if ( isset($params['is_first_request']) && $params['is_first_request']) {
+			// delete existing log file
+			Azure_app_service_migration_Custom_Logger::delete_log_file(AASM_EXPORT_SERVICE_TYPE);
+			
 			// initalize import log file
 			Azure_app_service_migration_Custom_Logger::init(AASM_EXPORT_SERVICE_TYPE);
-
+			
+			Azure_app_service_migration_Custom_Logger::logInfo(AASM_EXPORT_SERVICE_TYPE, 'Started with the export process.');
+			
+			$params['password'] = isset($_REQUEST['confpassword']) ? $_REQUEST['confpassword'] : "";
+			$params['dontexptpostrevisions'] = isset($_REQUEST['dontexptpostrevisions']) ? $_REQUEST['dontexptpostrevisions'] : "";
+			$params['dontexptsmedialibrary'] = isset($_REQUEST['dontexptsmedialibrary']) ? $_REQUEST['dontexptsmedialibrary'] : "";
+			$params['dontexptsthems'] = isset($_REQUEST['dontexptsthems']) ? $_REQUEST['dontexptsthems'] : "";
+			$params['dontexptmustuseplugins'] = isset($_REQUEST['dontexptmustuseplugs']) ? $_REQUEST['dontexptmustuseplugs'] : "";
+			$params['dontexptplugins'] = isset($_REQUEST['dontexptplugins']) ? $_REQUEST['dontexptplugins'] : "";
+			$params['dontdbsql'] = isset($_REQUEST['donotdbsql']) ? $_REQUEST['donotdbsql'] : "";
+			
 			// clear is_first_request param
 			unset($params['is_first_request']);
 		}
@@ -37,7 +50,7 @@ class Azure_app_service_migration_Export {
 		$params['completed'] = false;
 
 		// Loop over filters
-		if ( ( $filters = AASM_Common_Utils::get_filter_callbacks( 'aasm_import' ) ) ) {
+		if ( ( $filters = AASM_Common_Utils::get_filter_callbacks( 'aasm_export' ) ) ) {
 			while ( $hooks = current( $filters ) ) {
 				if ( intval( $params['priority'] ) === key( $filters ) ) {
 					foreach ( $hooks as $hook ) {
@@ -52,12 +65,12 @@ class Azure_app_service_migration_Export {
 
 					// exit after the last function of import process is completed
 					if ($params['priority'] == 20 && $params['completed']) {
-						Azure_app_service_migration_Custom_Logger::logInfo(AASM_IMPORT_SERVICE_TYPE, 'Import successfully completed.', true);
+						Azure_app_service_migration_Custom_Logger::logInfo(AASM_EXPORT_SERVICE_TYPE, 'Export successfully completed.', true);
 						exit;
 					}
-				
+
 					$response = wp_remote_post(                                                                                                        
-						admin_url( 'admin-ajax.php?action=aasm_import' ) ,
+						admin_url( 'admin-ajax.php?action=export' ) ,
 						array(                                               
 						'method'    => 'POST',
 						'timeout'   => 5,                                        
@@ -74,25 +87,4 @@ class Azure_app_service_migration_Export {
 			}
 		}		
     }
-
-	public static function base_import($params) {
-		$import_file_path = AASM_IMPORT_ZIP_LOCATION . 'importfile.zip';
-
-		// delete existing log file
-		Azure_app_service_migration_Custom_Logger::delete_log_file(AASM_IMPORT_SERVICE_TYPE);
-        
-		// Initialize log file
-		Azure_app_service_migration_Custom_Logger::init(AASM_IMPORT_SERVICE_TYPE);
-
-		//Import wp-content
-		$aasm_import_wpcontent = new Azure_app_service_migration_Import_Content($import_file_path, $params);
-		$aasm_import_wpcontent->import_content();
-
-		//Import database
-		$aasm_import_database = new Azure_app_service_migration_Import_Database($import_file_path, $params);
-		$aasm_import_database->import_database();
-
-		// Log Import completion status and update status option in database
-		Azure_app_service_migration_Custom_Logger::done(AASM_IMPORT_SERVICE_TYPE);
-	}
 }
