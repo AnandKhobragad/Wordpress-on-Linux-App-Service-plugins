@@ -27,7 +27,6 @@ class Azure_app_service_migration_Export {
 		
 		// First time functions executed here
 		if ( isset($params['is_first_request']) && $params['is_first_request']) {
-			file_put_contents('/home/d.txt', 'starting export' . PHP_EOL);
 			// delete existing log file
 			Azure_app_service_migration_Custom_Logger::delete_log_file(AASM_EXPORT_SERVICE_TYPE);
 			
@@ -58,12 +57,10 @@ class Azure_app_service_migration_Export {
 		// Loop over filters
 		if ( ( $filters = AASM_Common_Utils::get_filter_callbacks( 'aasm_export' ) ) ) {
 			while ( $hooks = current( $filters ) ) {
-				file_put_contents('/home/d.txt', 'hook priority is ' . key($filters) . PHP_EOL, FILE_APPEND);
 				if ( intval( $params['priority'] ) === key( $filters ) ) {
 					foreach ( $hooks as $hook ) {
 						try {
 							// Run function hook
-							file_put_contents('/home/d.txt', 'RUNNING HOOOK ' . $hook['function'] . PHP_EOL, FILE_APPEND);
 							$params = call_user_func_array( $hook['function'], array( $params ) );
 						} catch ( Exception $e ) {
 							Azure_app_service_migration_Custom_Logger::handleException($e);
@@ -73,12 +70,10 @@ class Azure_app_service_migration_Export {
 
 					// exit after export process is completed
 					if ($params['completed']) {
-						file_put_contents('/home/d.txt', 'export completed' . PHP_EOL, FILE_APPEND);
 						Azure_app_service_migration_Custom_Logger::logInfo(AASM_EXPORT_SERVICE_TYPE, 'Export successfully completed.', true);
 						exit;
 					}
 
-					file_put_contents('/home/d.txt', 'Making async http call' . PHP_EOL, FILE_APPEND);
 					$response = wp_remote_post(                                                                                                        
 						admin_url( 'admin-ajax.php?action=export' ) ,
 						array(                                               
