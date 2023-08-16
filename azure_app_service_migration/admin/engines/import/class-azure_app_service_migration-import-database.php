@@ -113,7 +113,7 @@ class Azure_app_service_migration_Import_Database {
             unset($params['new_database_name']);
             unset($params['status']);
             unset($params['originaldb_data']);
-            $params['priority'] = 20;
+            $params['priority'] = 40;
         }
 
         return $params;
