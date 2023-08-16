@@ -39,7 +39,7 @@ jQuery(function ($) {
 			error: function (jqXHR, textStatus, errorThrown) {
 				console.log("AJAX request failed: " + textStatus + ", " + errorThrown);
 				showAlert("An error occurred while processing the request.");
-				$('#downloadLink').show().css('display', 'inline-block');;
+				$('#downloadLink').show().css('display', 'inline-block');
 			},
 			complete: function () {
 				$("#generatefile").prop("disabled", false).text("Generate Export File");

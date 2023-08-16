@@ -79,7 +79,7 @@ class Azure_app_service_migration_Import_Controller {
 
 	public static function base_import($params) {
 		$import_file_path = AASM_IMPORT_ZIP_LOCATION . 'importfile.zip';
-
+		
 		// delete existing log file
 		Azure_app_service_migration_Custom_Logger::delete_log_file(AASM_IMPORT_SERVICE_TYPE);
         
