@@ -205,7 +205,7 @@ class Azure_app_service_migration_Export_FileBackupHandler
         }
     }
 
-    private static function createZipArchive($zipFilePath, $excludedFolders, $dontdbsql, $password, $dontexptpostrevisions, $params)
+    private static function createZipArchive($zipFilePath, $excludedFolders, $dontdbsql, $password, $dontexptpostrevisions, &$params)
     {
         if (!isset($params['status']['create_zip_archive'])) {
             $params['status']['create_zip_archive'] = false;
@@ -260,6 +260,11 @@ class Azure_app_service_migration_Export_FileBackupHandler
     private static function exportDatabaseTables($zip, $wpDBFolderNameInZip, $password, $dontexptpostrevisions, &$params) {
         // Export database tables' structure if not completed in previous sessions
         if (!isset($params['status']['export_database_table_structure']) || !$params['status']['export_database_table_structure']) {
+            // Log database table structure export status first time
+            if (!isset($params['status']['export_database_table_structure'])) {
+                Azure_app_service_migration_Custom_Logger::logInfo(AASM_EXPORT_SERVICE_TYPE, 'Exporting Database table schema.');
+            }
+
             $params['status']['export_database_table_structure'] = false;
             if (self::exportDatabaseTablesStructure($zip, $wpDBFolderNameInZip, $password, $dontexptpostrevisions, $params)) {
                 $params['status']['export_database_table_structure'] = true;
@@ -270,6 +275,11 @@ class Azure_app_service_migration_Export_FileBackupHandler
 
         // Export database tables' records if not completed in previous sessions
         if (!isset($params['status']['export_database_table_records']) || !$params['status']['export_database_table_records']) {
+            // Log database table records export status first time
+            if (!isset($params['status']['export_database_table_records'])) {
+                Azure_app_service_migration_Custom_Logger::logInfo(AASM_EXPORT_SERVICE_TYPE, 'Exporting Database table records.');
+            }
+            
             $params['status']['export_database_table_records'] = false;
             if (self::exportDatabaseTablesRecords($zip, $wpDBFolderNameInZip, $password, $dontexptpostrevisions, $params)) {
                 $params['status']['export_database_table_records'] = true;
@@ -476,6 +486,7 @@ class Azure_app_service_migration_Export_FileBackupHandler
         $completed = true;
         
         if (!isset($params['status']['add_files_to_zip'])) {
+            Azure_app_service_migration_Custom_Logger::logInfo(AASM_EXPORT_SERVICE_TYPE, 'Zipping wp-content folder.');
             $params['status']['add_files_to_zip'] = false;
         }
 
