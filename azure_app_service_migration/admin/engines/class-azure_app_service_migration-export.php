@@ -27,12 +27,9 @@ class Azure_app_service_migration_Export {
 		
 		// First time functions executed here
 		if ( isset($params['is_first_request']) && $params['is_first_request']) {
-			// delete existing log file
-			Azure_app_service_migration_Custom_Logger::delete_log_file(AASM_EXPORT_SERVICE_TYPE);
-			
 			// initalize import log file
+			Azure_app_service_migration_Custom_Logger::delete_log_file(AASM_EXPORT_SERVICE_TYPE);			
 			Azure_app_service_migration_Custom_Logger::init(AASM_EXPORT_SERVICE_TYPE);
-			
 			Azure_app_service_migration_Custom_Logger::logInfo(AASM_EXPORT_SERVICE_TYPE, 'Started with the export process.');
 			
 			$params['password'] = isset($_REQUEST['confpassword']) ? $_REQUEST['confpassword'] : "";
@@ -45,8 +42,16 @@ class Azure_app_service_migration_Export {
 
 			// delete enumerate csv file
 			if (file_exists(AASM_EXPORT_ENUMERATE_FILE)) {
+				Azure_app_service_migration_Custom_Logger::logInfo(AASM_EXPORT_SERVICE_TYPE, 'Deleting the previously generated enumerate csv file.');
 				unlink(AASM_EXPORT_ENUMERATE_FILE);
 			}
+
+			Azure_app_service_migration_Custom_Logger::logInfo(AASM_EXPORT_SERVICE_TYPE, 'Deleting the previously generated exported file.');
+			Azure_app_service_migration_Export_FileBackupHandler::deleteExistingZipFiles();
+
+			// generate zip file name
+			$params['zip_file_name'] = Azure_app_service_migration_Export_FileBackupHandler::generateZipFileName();
+			Azure_app_service_migration_Custom_Logger::logInfo(AASM_EXPORT_SERVICE_TYPE, 'Zip file name is generated as: ' . $zipFileName);
 			
 			// clear is_first_request param
 			unset($params['is_first_request']);

@@ -17,8 +17,9 @@ jQuery(function ($) {
 		$(this).prop("disabled", true).text("Generating Export...");
 	
 		var postdata = $("#frm-chkbox-data").serialize();
-		postdata += "&action=admin_ajax_request&param=wp_filebackup";
-	
+		postdata += "&action=aasm_export&param=wp_filebackup";
+		postdata += "&is_first_request=true";
+
 		$.ajax({
 			url: ajaxurl,
 			type: "POST",
