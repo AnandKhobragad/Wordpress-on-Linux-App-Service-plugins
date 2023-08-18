@@ -49,6 +49,9 @@ class Azure_app_service_migration_Export {
 			Azure_app_service_migration_Custom_Logger::logInfo(AASM_EXPORT_SERVICE_TYPE, 'Deleting the previously generated exported file.');
 			Azure_app_service_migration_Export_FileBackupHandler::deleteExistingZipFiles();
 
+			Azure_app_service_migration_Custom_Logger::logInfo(AASM_EXPORT_SERVICE_TYPE, 'Deleting existing database sql files.');
+			AASM_Common_Utils::clear_directory_recursive(AASM_DATABASE_SQL_DIR);
+
 			// generate zip file name
 			$params['zip_file_name'] = Azure_app_service_migration_Export_FileBackupHandler::generateZipFileName();
 			Azure_app_service_migration_Custom_Logger::logInfo(AASM_EXPORT_SERVICE_TYPE, 'Zip file name is generated as: ' . $zipFileName);

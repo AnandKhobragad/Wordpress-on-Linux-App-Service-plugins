@@ -180,6 +180,9 @@ class Azure_app_service_migration_Export_FileBackupHandler
         if ($dontexptplugins) {
             $excludedFolders[] = 'plugins';
         }
+        if ($dontexptplugins) {
+            $excludedFolders[] = AASM_PLUGIN_RELATIVE_PATH;
+        }
         return $excludedFolders;
     }
 
@@ -410,10 +413,10 @@ class Azure_app_service_migration_Export_FileBackupHandler
 
                             $recordsContent .= "INSERT INTO {$tableName} VALUES (" . implode(', ', $recordValues) . ");\n";
                         }
-                        $zip->addFromString($wpDBFolderNameInZip . $recordsFilename . ".sql", $recordsContent);
+                        $zip->addFromString($wpDBFolderNameInZip . $recordsFilename, $recordsContent);
 
                         if ($password !== '') {
-                            $zip->setEncryptionName($wpDBFolderNameInZip . $tableName . ".sql", ZipArchive::EM_AES_256, $password);
+                            $zip->setEncryptionName($wpDBFolderNameInZip . $recordsFilename, ZipArchive::EM_AES_256, $password);
                         }
                     }
 
@@ -422,6 +425,7 @@ class Azure_app_service_migration_Export_FileBackupHandler
                 } while (!empty($records));
 
                 $batchNumber = 0;
+                $offset = 0;
 
                 Azure_app_service_migration_Custom_Logger::logInfo(AASM_EXPORT_SERVICE_TYPE, 'Exporting Records for table: ' . $tableName . ' - completed');
             }
