@@ -240,6 +240,7 @@ class Azure_app_service_migration_Export_FileBackupHandler
 
                     try {
                         if (!self::addFilesToZip($zip, $folderPath, $wpContentFolderNameInZip, $excludedFolders, $password, $params)) {
+                            $zip->close();
                             return false;
                         }
                     } catch ( Exception $ex ) {
