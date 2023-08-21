@@ -523,7 +523,8 @@ class Azure_app_service_migration_Export_FileBackupHandler
                 $relativePath = $row[2];
                 
                 if (file_exists($filePath) && is_file($filePath)) {
-                    $zip->addFile($filePath, $relativePath);
+                    $fileContents = file_get_contents($filePath);
+                    $zip->addFromString($relativePath, $fileContents);
                 }
                 
                 // Exit if time exceeds 10 seconds
