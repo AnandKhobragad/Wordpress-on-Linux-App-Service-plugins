@@ -281,6 +281,10 @@ class Azure_app_service_migration
 
         // register function hooks for export
         add_filter( 'aasm_export', 'Azure_app_service_migration_Export_FileBackupHandler::handle_wp_filebackup', 5 );
+
+        // register migration status actions
+        add_action( 'wp_ajax_aasm_import_status', 'Azure_app_service_migration_Status::import_status');
+        add_action( 'wp_ajax_aasm_export_status', 'Azure_app_service_migration_Status::export_status');
     }
 
     /**

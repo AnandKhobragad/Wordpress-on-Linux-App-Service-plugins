@@ -45,13 +45,24 @@ class Azure_app_service_migration_Custom_Logger
     }
 
     // Custom error handler
-    // To Do: Remove $should_update_status_option parameter
-    public static function logInfo($service_type, $message, $should_update_status_option = false)
+    public static function logInfo($service_type, $message, $update_status_file = false)
     {
         // Get the current date and time
         $current_time = date('Y-m-d H:i:s');
         $info_message = "AASM_LOG: [{$current_time}]: {$service_type} {$message}";
         self::writeToLog('Information',$info_message, $service_type);
+
+        // Write status to status file
+        if ($update_status_file) {
+            $status_file_path = $service_type === AASM_IMPORT_SERVICE_TYPE
+                                            ? AASM_IMPORT_STATUSFILE_PATH 
+                                            : AASM_EXPORT_STATUSFILE_PATH;
+            $status_file = fopen($status_file_path, 'w');
+            if ($status_file) {
+            fputcsv($status_file, ['info', $message]);
+            fclose($status_file);
+            }
+        }
     }
 
     public static function logError($service_type, $message, $echo_status = true)
@@ -66,6 +77,18 @@ class Azure_app_service_migration_Custom_Logger
             $migration_status = array( 'status' => 'error', 'message' => $error_message );
             echo json_encode($migration_status);
         }
+
+        // Write status to status file
+        $status_file_path = $service_type === AASM_IMPORT_SERVICE_TYPE
+                            ? AASM_IMPORT_STATUSFILE_PATH :
+                            AASM_EXPORT_STATUSFILE_PATH;
+        
+        $status_file = fopen($status_file_path, 'w');
+        if ($status_file) {
+            fputcsv($status_file, ['error', $message]);
+            fclose($status_file);
+        }
+
         wp_die();
     }
 
@@ -76,6 +99,17 @@ class Azure_app_service_migration_Custom_Logger
         $current_time = date('Y-m-d H:i:s');
         $info_message = "AASM_LOG [{$current_time}]: {$service_type} Finished.";
         self::writeToLog($info_message);
+
+        // Write status to status file
+        $status_file_path = $service_type === AASM_IMPORT_SERVICE_TYPE
+                            ? AASM_IMPORT_STATUSFILE_PATH :
+                            AASM_EXPORT_STATUSFILE_PATH;
+        
+        $status_file = fopen($status_file_path, 'w');
+        if ($status_file) {
+            fputcsv($status_file, ['done', $info_message]);
+            fclose($status_file);
+        }
     }
 
     // Custom exception handler

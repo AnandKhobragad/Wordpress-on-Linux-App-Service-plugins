@@ -2,16 +2,9 @@
 // TO DO: This file will be redundant and needs to be deleted once batch processing is implemented for import
 class AASM_Zip_Extractor {
     private $zip_path = null;
-    private $file_handle = null;
-    private $eof = null;
 
     public function __construct( $zip_file_name ) {
         $this->zip_path = $zip_file_name;
-        
-        /*// Open input zip file for reading
-        if ( ( $this->file_handle = @fopen( $zip_file_name, 'rb' ) ) === false ) {
-            throw new AASM_File_Not_Found_Exception( "File Not Found: Couldn't find file at " . $zip_file_name );
-        }*/
     }
     
     public function extract( $destination_dir, $files_to_exclude = [], $zip_start_index ) {

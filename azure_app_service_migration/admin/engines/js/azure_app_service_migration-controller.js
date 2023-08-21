@@ -83,7 +83,39 @@ jQuery(function ($) {
 		clearInterval(blinkInterval);
 		clearTimeout(blinkTimeout);
 		element.stop().show();
-	  }   
+	  }
+
+	  function getExportStatus(retryCount) {
+		// Set max retry count for getting status from server
+		maxRetryCount = 10;
+	
+		$.ajax({
+		  url: ajaxurl,
+		  type: 'POST',
+		  dataType: 'json',
+		  data: {
+			action: 'wp_ajax_aasm_export_status', // Adjust the server-side action name
+		  },
+		  success: function(response) {
+			if (response.status === 'done' ) {
+				showAlert(data.message);
+			}
+	
+			if (!(response.status === 'exception') && !(response.status === 'error') && !(response.status === 'done')) {
+				getExportStatus(0);
+			}
+		  },
+		  error: function(xhr, status, error) {
+			// Retry the updateStatus call if the maximum number of retries is not reached
+			if (retryCount < maxRetryCount) {
+				getExportStatus(retryCount+1);
+			} else {
+			  // Max retries reached, display error message
+			  statusText.textContent = 'Failed to connect to server. Export can still be in progress';
+			}
+		  }
+		});
+	}
    
 	// Add event listeners for drag and drop functionality
 	$("#dropzone")

@@ -157,3 +157,15 @@ define( 'AASM_EXPORT_LOGFILE_PATH', substr(AZURE_APP_SERVICE_MIGRATION_PLUGIN_PA
 define( 'AASM_PLUGIN_RELATIVE_PATH', 'wp-content' . DIRECTORY_SEPARATOR . 
                                     'plugins' . DIRECTORY_SEPARATOR . 
                                     AASM_PLUGIN_NAME . DIRECTORY_SEPARATOR);
+
+// ==============
+// = Export Status file path =
+// ==============
+define( 'AASM_EXPORT_STATUSFILE_PATH', substr(AZURE_APP_SERVICE_MIGRATION_PLUGIN_PATH, 0, -1) . DIRECTORY_SEPARATOR . 'Logs' . 
+DIRECTORY_SEPARATOR . 'export_status.csv');
+
+// ==============
+// = Import Status file path =
+// ==============
+define( 'AASM_IMPORT_STATUSFILE_PATH', substr(AZURE_APP_SERVICE_MIGRATION_PLUGIN_PATH, 0, -1) . DIRECTORY_SEPARATOR . 'Logs' . 
+DIRECTORY_SEPARATOR . 'import_status.csv');

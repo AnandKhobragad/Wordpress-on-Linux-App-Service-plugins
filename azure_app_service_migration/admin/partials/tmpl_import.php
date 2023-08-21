@@ -73,88 +73,36 @@ $reducedSize = (int) $trimmedSize * 0.5; // Convert the trimmed size to an integ
     }
   }
 
-  // To Do: Commenting out this function for now since it may prevent Import/Export in some cases
-    /*function verifyMigrationStatus(retryCount) {
-      // Set max retry count for getting status from server
-      maxRetryCount = 5;
-
-      $.ajax({
-        url: ajaxurl,
-        type: 'POST',
-        dataType: 'json',
-        data: {
-          action: 'get_migration_status', // Adjust the server-side action name
-        },
-        success: function(response) {
-          // Handle the success response after combining the chunks
-          console.log(response);
-          
-          // To Do (Sudhakar): Display popup message here when import/export already in progress
-          // Currently updating the statusText Value
-          if (response.type == 'status')
-          {
-            // Update status text value
-            statusText.textContent = 'Import/Export process is already running on the server! Please wait a while and try again.';
-          }
-          else
-          {
-            // Update status text value
-            statusText.textContent = 'Starting Migration.';
-
-            // Start Import process (with uploading zip file) if there is no Import/Export in progress
-            document.getElementById('progressBarContainer').style.display = 'block'; // Display the progress bar
-            uploadChunkWithRetry();
-          }
-        },
-        error: function(xhr, status, error) {
-          // Retry the updateStatus call if the maximum number of retries is not reached
-          if (retryCount < maxRetryCount) {
-            updateStatusText(retryCount+1);
-          } else {
-            // Max retries reached, display error message
-            statusText.textContent = 'Failed to connect to server. Import can still be in progress';
-          }
-        }
-      });
-    }
-    */
-
-  // Makes a GET request to the server to get IMPORT status
-  function updateStatusText(retryCount) {
+  function getMigrationStatus(retryCount) {
     // Set max retry count for getting status from server
-    maxRetryCount = 15;
+    maxRetryCount = 10;
 
     $.ajax({
       url: ajaxurl,
       type: 'POST',
       dataType: 'json',
       data: {
-        action: 'get_migration_status', // Adjust the server-side action name
+        action: 'wp_ajax_aasm_import_status', // Adjust the server-side action name
       },
       success: function(response) {
         // Handle the success response after combining the chunks
         console.log(response);
         
-        // To Do (Sudhakar): Display response.message in status box.
-        // Currently updating a text field (statusText) in the page. 
-        
-        // Update status text value
-        statusText.textContent = response.message;
-        
-        // Call updateStatusText recursively only if migration is still in progress
-        if (response.type == 'status')
+        // Currently updating the statusText Value
+        if (response.status === 'info' || response.status === 'error' || response.status === 'exception' || response.status === 'done')
         {
-          updateStatusText(0);
-          return;
+          // Update status text value
+          statusText.textContent = response.message;
+        }
+
+        if (!(response.status === 'exception') && !(response.status === 'error')) {
+          getMigrationStatus(0);
         }
       },
       error: function(xhr, status, error) {
-        // Handle the error response
-        console.log(error);
-
         // Retry the updateStatus call if the maximum number of retries is not reached
         if (retryCount < maxRetryCount) {
-          updateStatusText(retryCount+1);
+          getMigrationStatus(retryCount+1);
         } else {
           // Max retries reached, display error message
           statusText.textContent = 'Failed to connect to server. Import can still be in progress';
@@ -259,35 +207,16 @@ function combineChunksWithRetry(
     },
     success: function (response) {
       console.log(response);
-      fileInfo.textContent = 'File imported successfully.';
+      fileInfo.textContent = 'Importing...';
       var fileInput = document.getElementById('importFile');
       fileInput.value = '';
       document.getElementById('progressBarContainer').style.display = 'none'; // Hide the progress bar
+      getMigrationStatus(0);
       //deleteChunks(); // Delete the chunk files
     },
     error: function (xhr, status, error) {
       console.log(error);
       fileInfo.textContent = `Import Failed with error: ${error}`;
-      /*
-      if (retries < maxRetries) {
-        retries++;
-        setTimeout(function () {
-          combineChunksWithRetry(
-            ajaxurl,
-            w3tc_checkbox,
-            formData,
-            fileInfo,
-            retries,
-            maxRetries,
-            retryDelay
-          );
-        }, retryDelay);
-      } else {
-        fileInfo.textContent =
-          'Failed to import file after multiple retries.';
-        document.getElementById('progressBarContainer').style.display = 'none'; // Hide the progress bar
-        deleteChunks(); // Delete the chunk files
-      }*/
     },    
     complete: function() {
       document.getElementById('btnImportfile').disabled = false;      
