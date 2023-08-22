@@ -59,8 +59,9 @@ class AASM_Database_Manager {
         $query = "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '$databaseName';";
         $result = $wpdb->get_row($query);
         return !empty($result);
-    }    
-     // Update the 'siteurl' and 'home' values in the options table of the original WordPress database
+    }
+    
+    // Update the 'siteurl' and 'home' values in the options table of the original WordPress database
     public function update_originaldb_data($newDatabaseName,$originalDataToUpdate )
     {
         $databaseConstants = $this->get_database_constants();

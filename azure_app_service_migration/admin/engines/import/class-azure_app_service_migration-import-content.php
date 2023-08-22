@@ -141,7 +141,6 @@ class Azure_app_service_migration_Import_Content {
             } catch(Exception $ex) {
                 Azure_app_service_migration_Custom_Logger::handleException($ex);
             }
-            
         }
     }
 

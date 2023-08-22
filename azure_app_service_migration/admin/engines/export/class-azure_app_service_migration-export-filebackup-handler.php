@@ -1,61 +1,71 @@
 <?php
 class Azure_app_service_migration_Export_FileBackupHandler
 {
-    private $logFilePath;
-
-    public function __construct()
-    {
-        $this->logFilePath = AASM_LOG_FILE_LOCATION . 'export_log.txt';
-
-    }
-
-    public function handle_wp_filebackup()
+    public static function handle_wp_filebackup($params)
     {
         try {
             $param = isset($_REQUEST['param']) ? $_REQUEST['param'] : "";
             if (!empty($param)) {
                 if ($param == "wp_filebackup") {
-                    $password = isset($_REQUEST['confpassword']) ? $_REQUEST['confpassword'] : "";
-                    $dontexptpostrevisions = isset($_REQUEST['dontexptpostrevisions']) ? $_REQUEST['dontexptpostrevisions'] : "";
-                    $dontexptsmedialibrary = isset($_REQUEST['dontexptsmedialibrary']) ? $_REQUEST['dontexptsmedialibrary'] : "";
-                    $dontexptsthems = isset($_REQUEST['dontexptsthems']) ? $_REQUEST['dontexptsthems'] : "";
-                    $dontexptmustuseplugins = isset($_REQUEST['dontexptmustuseplugs']) ? $_REQUEST['dontexptmustuseplugs'] : "";
-                    $dontexptplugins = isset($_REQUEST['dontexptplugins']) ? $_REQUEST['dontexptplugins'] : "";
-                    $dontdbsql = isset($_REQUEST['donotdbsql']) ? $_REQUEST['donotdbsql'] : "";
+                    $password = isset($params['confpassword']) ? $params['confpassword'] : "";
+                    $dontexptpostrevisions = isset($params['dontexptpostrevisions']) ? $params['dontexptpostrevisions'] : "";
+                    $dontexptsmedialibrary = isset($params['dontexptsmedialibrary']) ? $params['dontexptsmedialibrary'] : "";
+                    $dontexptsthems = isset($params['dontexptsthems']) ? $params['dontexptsthems'] : "";
+                    $dontexptmustuseplugins = isset($params['dontexptmustuseplugs']) ? $params['dontexptmustuseplugs'] : "";
+                    $dontexptplugins = isset($params['dontexptplugins']) ? $params['dontexptplugins'] : "";
+                    $dontdbsql = isset($params['donotdbsql']) ? $params['donotdbsql'] : "";
 
-                    // delete existing log file
-                    Azure_app_service_migration_Custom_Logger::delete_log_file(AASM_EXPORT_SERVICE_TYPE);
-                    // Initialize log file
-                    Azure_app_service_migration_Custom_Logger::init(AASM_EXPORT_SERVICE_TYPE);
-                    Azure_app_service_migration_Custom_Logger::logInfo(AASM_EXPORT_SERVICE_TYPE, 'Started with the export process.');
+                    if (!isset($params['status'])) {
+                        $params['status'] = array();
+                    }
+                    
+                    $zipFilePath = self::getZipFilePath($params['zip_file_name']);
+                    //Azure_app_service_migration_Custom_Logger::logInfo(AASM_EXPORT_SERVICE_TYPE, 'Zip file path is: ' . $zipFilePath);
 
-                    $zipFileName = $this->generateZipFileName();
-                    Azure_app_service_migration_Custom_Logger::logInfo(AASM_EXPORT_SERVICE_TYPE, 'Zip file name is generated as: ' . $zipFileName);
+                    $excludedFolders = self::getExcludedFolders($dontexptsmedialibrary, $dontexptsthems, $dontexptmustuseplugins, $dontexptplugins);
 
-                    $zipFilePath = $this->getZipFilePath($zipFileName);
-                    Azure_app_service_migration_Custom_Logger::logInfo(AASM_EXPORT_SERVICE_TYPE, 'Zip file path is: ' . $zipFilePath);
+                    // Enumerate wp-content directory into a csv file
+                    if (!isset($params['status']['enumerate_content']) || !$params['status']['enumerate_content']) {
+                        if (!isset($params['status']['enumerate_content'])) {
+                            Azure_app_service_migration_Custom_Logger::logInfo(AASM_EXPORT_SERVICE_TYPE, 'Enumerating Wp-Content folder...');
+                        }
 
-                    $excludedFolders = $this->getExcludedFolders($dontexptsmedialibrary, $dontexptsthems, $dontexptmustuseplugins, $dontexptplugins);
+                        $params['status']['enumerate_content'] = false;
+                        $enumerate_start_index = isset($params['enumerate_start_index'])
+                                                ? $params['enumerate_start_index']
+                                                : 0;
+                        try {
+                            $enumerate_result = self::enumerateContent($enumerate_start_index, $excludedFolders);
+                            if ($enumerate_result['completed']) {
+                                unset($params['enumerate_start_index']);
+                                $params['status']['enumerate_content'] = true;
+                            } else {
+                                $params['enumerate_start_index'] = $enumerate_result['enumerate_start_index'];
+                            }
+                        } catch (Exception $ex) {
+                            throw $ex;
+                        }
+                        // start new session to continue rest of export
+                        $params['completed'] = false;
+                        return $params;
+                    }
 
-                    Azure_app_service_migration_Custom_Logger::logInfo(AASM_EXPORT_SERVICE_TYPE, 'Deleting the previously generated exported file.');
-                    $this->deleteExistingZipFiles();
-
-                    Azure_app_service_migration_Custom_Logger::logInfo(AASM_EXPORT_SERVICE_TYPE, 'Started generating the ZipArchive for ' . $zipFileName);
-                    $zipCreated = $this->createZipArchive($zipFilePath, $excludedFolders, $dontdbsql, $password, $dontexptpostrevisions);
-                    Azure_app_service_migration_Custom_Logger::logInfo(AASM_EXPORT_SERVICE_TYPE, 'Completed generating the ZipArchive for ' . $zipFileName);
+                    // Generate Zip Archive
+                    $zipCreated = false;
+                    try {
+                        $zipCreated = self::createZipArchive($zipFilePath, $excludedFolders, $dontdbsql, $password, $dontexptpostrevisions, $params);
+                    } catch (Exception $ex) {
+                        throw $ex;
+                    }
 
                     if ($zipCreated) {
                         Azure_app_service_migration_Custom_Logger::logInfo(AASM_EXPORT_SERVICE_TYPE, 'Content is exported and Ready to download');
-                        echo json_encode(array(
-                            "status" => 1,
-                            "message" => "Content is exported and Ready to download",
-                        ));
+                        unset($params['status']);
+                        $params['completed'] = true;
+                        return $params;
                     } else {
-                        Azure_app_service_migration_Custom_Logger::logError(AASM_EXPORT_SERVICE_TYPE, 'Failed to export after maximum retries.');
-                        echo json_encode(array(
-                            "status" => 0,
-                            "message" => "Failed to export after maximum retries.",
-                        ));
+                        $params['completed'] = false;
+                        return $params;
                     }
                 }
             }
@@ -65,16 +75,87 @@ class Azure_app_service_migration_Export_FileBackupHandler
                 "status" => 0,
                 "message" => "An exception occurred: " . $e->getMessage(),
             ));
+            throw $e;
         }
+        return $params;
     }
-    private function generateZipFileName()
+
+    // Adds the list of files in wp-content directory to csv file 
+    private static function enumerateContent($enumerate_start_index, $excludedFolders) {       
+        // Start time
+		$start = microtime( true );
+
+        // Initialize completed flag
+        $completed = true;
+
+        // Create enumerate file base directory
+        $enumerate_file_dir = dirname(AASM_EXPORT_ENUMERATE_FILE);
+        if (!is_dir($enumerate_file_dir)) {
+            mkdir($enumerate_file_dir, 0755, true);
+        }
+
+        // Open in append mode
+        $csvFile = fopen(AASM_EXPORT_ENUMERATE_FILE, 'a');
+
+        // Initialize directory iterator
+        $directoryIterator = new RecursiveDirectoryIterator(ABSPATH . 'wp-content' . DIRECTORY_SEPARATOR, RecursiveDirectoryIterator::SKIP_DOTS);
+        $recursiveIterator = new RecursiveIteratorIterator($directoryIterator, RecursiveIteratorIterator::SELF_FIRST);
+
+        // Initialize indices
+        $resumeIndex = $enumerate_start_index;
+        $currentIndex = 0;
+
+        foreach ($recursiveIterator as $fileInfo) {
+            // break when timeout (10s) is reached
+            if ( ( microtime( true ) - $start ) > 100 ) {
+                if ($enumerate_start_index > $currentIndex) {
+                    throw new Exception('Error enumerating wp-content.');
+                }
+                $enumerate_start_index = $currentIndex;
+                $completed = false;
+                break;
+            }
+
+            if ($fileInfo->isFile()) {
+                if ($currentIndex >= $resumeIndex) {
+                    $filePath = $fileInfo->getPathname();
+                    // Initialize exclude file flag
+                    $excludeFile = false;
+                    foreach($excludedFolders as $excludedFolder) {
+                        if (str_starts_with($filePath, AASM_Common_Utils::replace_forward_slash_with_directory_separator($excludedFolder))) {
+                            $excludeFile = true;
+                        }
+                    }
+
+                    // Add file to csv if it is not part of excluded folders
+                    if (!$excludeFile) {
+                        $relativePath = $filePath;
+                        $rootDirPrefix = ABSPATH;
+                        if (strpos($filePath, $rootDirPrefix) === 0) {
+                            $relativePath = substr($filePath, strlen($rootDirPrefix));
+                        }
+                        fputcsv($csvFile, [$currentIndex, $filePath, $relativePath]);
+                    }
+                }
+            }
+            $currentIndex++;
+        }
+
+        fclose($csvFile);
+        return array(
+            'completed' => $completed,
+            'enumerate_start_index' => $enumerate_start_index,
+        );
+    }
+
+    public static function generateZipFileName()
     {
         $File_Name = $_SERVER['HTTP_HOST'];
         $datetime = date('Y-m-d_H-i-s');
         return $File_Name . '_' . $datetime . '.zip';
     }
 
-    private function getZipFilePath($zipFileName)
+    private static function getZipFilePath($zipFileName)
     {
         // Create the directory if it doesn't exist
         if (!is_dir(AASM_EXPORT_ZIP_LOCATION)) {
@@ -84,7 +165,7 @@ class Azure_app_service_migration_Export_FileBackupHandler
         return AASM_EXPORT_ZIP_LOCATION . $zipFileName;
     }
 
-    private function getExcludedFolders($dontexptsmedialibrary, $dontexptsthems, $dontexptmustuseplugins, $dontexptplugins)
+    private static function getExcludedFolders($dontexptsmedialibrary, $dontexptsthems, $dontexptmustuseplugins, $dontexptplugins)
     {
         $excludedFolders = [];
         if ($dontexptsmedialibrary) {
@@ -99,12 +180,20 @@ class Azure_app_service_migration_Export_FileBackupHandler
         if ($dontexptplugins) {
             $excludedFolders[] = 'plugins';
         }
+        if ($dontexptplugins) {
+            $excludedFolders[] = AASM_PLUGIN_RELATIVE_PATH;
+        }
         return $excludedFolders;
     }
 
-    private function deleteExistingZipFiles()
+    public static function deleteExistingZipFiles()
     {
         try {
+            // Return if export storage directory not present
+            if (!is_dir(AASM_EXPORT_ZIP_LOCATION)) {
+                return;
+            }
+
             $File_Name = $_SERVER['HTTP_HOST'];
             $iterator = new DirectoryIterator(AASM_EXPORT_ZIP_LOCATION);
             foreach ($iterator as $file) {
@@ -119,53 +208,118 @@ class Azure_app_service_migration_Export_FileBackupHandler
         }
     }
 
-    private function createZipArchive($zipFilePath, $excludedFolders, $dontdbsql, $password, $dontexptpostrevisions)
+    private static function createZipArchive($zipFilePath, $excludedFolders, $dontdbsql, $password, $dontexptpostrevisions, &$params)
     {
-        $maxRetries = 3;
-        $retryDelay = 5; // in seconds
-        $retryCount = 0;
+        if (!isset($params['status']['create_zip_archive'])) {
+            $params['status']['create_zip_archive'] = false;
+        }
+
+        // Return if zip archive was already created in previous sessions
+        if ($params['status']['create_zip_archive']) {
+            return true;
+        }
+
         $zipCreated = false;
         try {
-            while ($retryCount < $maxRetries && !$zipCreated) {
                 $zip = new ZipArchive();
-                if ($zip->open($zipFilePath, ZipArchive::CREATE | ZipArchive::OVERWRITE) === true) {
+                if ($zip->open($zipFilePath, ZipArchive::CREATE) === true) {
                     $wpContentFolderNameInZip = 'wp-content/';
                     $zip->addEmptyDir($wpContentFolderNameInZip);
-
                     if (!$dontdbsql) {
                         $wpDBFolderNameInZip = 'wp-database/';
                         $zip->addEmptyDir($wpDBFolderNameInZip);
-                        $this->exportDatabaseTables($zip, $wpDBFolderNameInZip, $password, $dontexptpostrevisions);
+                        
+                        // Export Database Tables
+                        if (!self::exportDatabaseTables($zip, $wpDBFolderNameInZip, $password, $dontexptpostrevisions, $params)) {
+                            return false;
+                        }
                     }
 
                     $wp_root_path = get_home_path();
                     $folderPath = $wp_root_path . '/wp-content/';
-                    $this->addFilesToZip($zip, $folderPath, $wpContentFolderNameInZip, $excludedFolders, $password);
+
+                    try {
+                        if (!self::addFilesToZip($zip, $folderPath, $wpContentFolderNameInZip, $excludedFolders, $password, $params)) {
+                            return false;
+                        }
+                    } catch ( Exception $ex ) {
+                        throw $ex;
+                    }
 
                     $zip->close();
-                    $zipCreated = true;
                     Azure_app_service_migration_Custom_Logger::logInfo(AASM_EXPORT_SERVICE_TYPE, 'Zip Archive closed successfully.');
+
+                    return true;
                 } else {
-                    $retryCount++;
-                    sleep($retryDelay);
+                    throw new Exception("Export failed... Couldn't open the Zip file: " . $zipFilePath);
                 }
-            }
         } catch (Exception $e) {
             Azure_app_service_migration_Custom_Logger::logError(AASM_EXPORT_SERVICE_TYPE, 'Zip creation error: ' . $e->getMessage());
             throw new AASM_Archive_Exception('Zip creation error:' . $e->getMessage());
         }
-        return $zipCreated;
+        return false;
     }
 
-    private function exportDatabaseTables($zip, $wpDBFolderNameInZip, $password, $dontexptpostrevisions)
+    private static function exportDatabaseTables($zip, $wpDBFolderNameInZip, $password, $dontexptpostrevisions, &$params) {
+        // Export database tables' structure if not completed in previous sessions
+        if (!isset($params['status']['export_database_table_structure']) || !$params['status']['export_database_table_structure']) {
+            // Log database table structure export status first time
+            if (!isset($params['status']['export_database_table_structure'])) {
+                Azure_app_service_migration_Custom_Logger::logInfo(AASM_EXPORT_SERVICE_TYPE, 'Exporting Database table schema.');
+            }
+
+            $params['status']['export_database_table_structure'] = false;
+            if (self::exportDatabaseTablesStructure($zip, $wpDBFolderNameInZip, $password, $dontexptpostrevisions, $params)) {
+                $params['status']['export_database_table_structure'] = true;
+            }
+            // return false to start a new session which will resume export database records
+            return false;
+        }
+
+        // Export database tables' records if not completed in previous sessions
+        if (!isset($params['status']['export_database_table_records']) || !$params['status']['export_database_table_records']) {
+            // Log database table records export status first time
+            if (!isset($params['status']['export_database_table_records'])) {
+                Azure_app_service_migration_Custom_Logger::logInfo(AASM_EXPORT_SERVICE_TYPE, 'Exporting Database table records.');
+            }
+            
+            $params['status']['export_database_table_records'] = false;
+            if (self::exportDatabaseTablesRecords($zip, $wpDBFolderNameInZip, $password, $dontexptpostrevisions, $params)) {
+                $params['status']['export_database_table_records'] = true;
+            }
+            // return false to start a new session which will resume zipping of wp-content
+            return false;
+        }
+
+        return true;
+
+    }
+
+    private static function exportDatabaseTablesStructure($zip, $wpDBFolderNameInZip, $password, $dontexptpostrevisions, &$params)
     {
+        // Start time
+		$start = microtime( true );
+
+        // Initialize completed flag
+        $completed = true;
+
+        // Initialize start table index
+        if (!isset($params['start_db_table_structure_index'])) {
+            $params['start_db_table_structure_index'] = 0;
+        }
+        $start_table_index = $params['start_db_table_structure_index'];
+
         global $wpdb;
         $tablesQuery = "SHOW TABLES";
         $tables = $wpdb->get_results($tablesQuery, ARRAY_N);
+        
         try {
-            $currentTable = null;
-            foreach ($tables as $table) {
-                $tableName = $table[0];
+            for ($tableNum = $start_table_index; $tableNum < count($tables); $tableNum++) {
+                if ( ( microtime( true ) - $start ) > 20 ) {
+                    $params['start_db_table_structure_index'] = $tableNum;
+                    $completed = false;
+                }
+                $tableName = $tables[$tableNum][0];
                 $structureQuery = "SHOW CREATE TABLE {$tableName}";
                 $structureResult = $wpdb->get_row($structureQuery, ARRAY_N);
                 $tableStructure = $structureResult[1];
@@ -175,71 +329,125 @@ class Azure_app_service_migration_Export_FileBackupHandler
                 if ($password !== '') {
                     $zip->setEncryptionName($wpDBFolderNameInZip . $structureFilename, ZipArchive::EM_AES_256, $password);
                 }
-
-                if ($currentTable !== $tableName) {
-                    $currentTable = $tableName;
-                    Azure_app_service_migration_Custom_Logger::logInfo(AASM_EXPORT_SERVICE_TYPE, 'Exporting Schema for table: ' . $currentTable);
-                }
-
-                $this->exportTableRecords($wpdb, $tableName, $zip, $wpDBFolderNameInZip, $password, $dontexptpostrevisions);
+            }
+            
+            // return false if not completed to resume execution in a new session
+            if (!$completed) {
+                return false;
+            } else {
+                unset($params['start_db_table_structure_index']);
+                return true;
             }
         } catch (Exception $e) {
             Azure_app_service_migration_Custom_Logger::logError(AASM_EXPORT_SERVICE_TYPE, 'DB Tables export exception: ' . $e->getMessage());
             throw new AASM_Export_Exception('DB Tables export exception:' . $e->getMessage());
         }
+        
+        return $completed;
     }
-    private function exportTableRecords($wpdb, $tableName, $zip, $wpDBFolderNameInZip, $password, $dontexptpostrevisions)
+
+    private static function exportDatabaseTablesRecords($zip, $wpDBFolderNameInZip, $password, $dontexptpostrevisions, &$params)
     {
+        // Start time
+		$start = microtime( true );
+
+        // initialize completed flag
+        $completed = true;
+
+        // Initialize start table index
+        if (!isset($params['start_db_table_records_index'])) {
+            $params['start_db_table_records_index'] = 0;
+        }
+        $start_table_index = $params['start_db_table_records_index'];
+
+        // Initialize db records offset
+        if (!isset($params['db_records_offset'])) {
+            $params['db_records_offset'] = 0;
+        }
+        $offset = $params['db_records_offset'];
+
+        // Initialize db records batchNumber
+        if (!isset($params['db_records_batchNumber'])) {
+            $params['db_records_batchNumber'] = 0;
+        }
+        $batchNumber = $params['db_records_batchNumber'];
+
         $batchSize = 1000;
-        $offset = 0;
-        $batchNumber = 1;
+
+        global $wpdb;
+        $tablesQuery = "SHOW TABLES";
+        $tables = $wpdb->get_results($tablesQuery, ARRAY_N);
+
         try {
-            Azure_app_service_migration_Custom_Logger::logInfo(AASM_EXPORT_SERVICE_TYPE, 'Exporting Records for table : ' . $tableName . '-started');            do {
-                if ($dontexptpostrevisions && $tableName == 'wp_posts') {
-                    $recordsQuery = "SELECT * FROM {$tableName} WHERE post_type != 'revision' LIMIT {$offset}, {$batchSize}";
-                } else {
-                    $recordsQuery = "SELECT * FROM {$tableName} LIMIT {$offset}, {$batchSize}";
+            for ($tableNum = $start_table_index; $tableNum < count($tables); $tableNum++) {
+                // break when timeout (20s) is reached
+                if ( ( microtime( true ) - $start ) > 10 ) {
+                    $params['start_db_table_records_index'] = $tableNum;
+                    $params['db_records_offset'] = $offset;
+                    $params['db_records_batchNumber'] = $batchNumber;
+                    $completed = false;
+                    break;
                 }
 
-                $records = $wpdb->get_results($recordsQuery, ARRAY_A);
-                $recordsFilename = "{$tableName}_records_batch{$batchNumber}.sql";
-
-                if (!empty($records)) {
-                    $recordsContent = "";
-
-                    foreach ($records as $record) {
-                        $recordValues = [];
-
-                        foreach ($record as $value) {
-                            $recordValues[] = $this->formatRecordValue($value);
-                        }
-
-                        $recordsContent .= "INSERT INTO {$tableName} VALUES (" . implode(', ', $recordValues) . ");\n";
-                    }
-
-                    if ($batchNumber === 1) {
-                        $zip->addFromString($wpDBFolderNameInZip . $tableName . ".sql", $recordsContent);
+                $tableName = $tables[$tableNum][0];
+                Azure_app_service_migration_Custom_Logger::logInfo(AASM_EXPORT_SERVICE_TYPE, 'Exporting Records for table : ' . $tableName . '-started');       
+                do {
+                    if ($dontexptpostrevisions && $tableName == 'wp_posts') {
+                        $recordsQuery = "SELECT * FROM {$tableName} WHERE post_type != 'revision' LIMIT {$offset}, {$batchSize}";
                     } else {
-                        $zip->appendFromString($wpDBFolderNameInZip . $tableName . ".sql", $recordsContent);
+                        $recordsQuery = "SELECT * FROM {$tableName} LIMIT {$offset}, {$batchSize}";
                     }
 
-                    if ($password !== '') {
-                        $zip->setEncryptionName($wpDBFolderNameInZip . $tableName . ".sql", ZipArchive::EM_AES_256, $password);
+                    $records = $wpdb->get_results($recordsQuery, ARRAY_A);
+                    $recordsFilename = "{$tableName}_records_batch{$batchNumber}.sql";
+
+                    if (!empty($records)) {
+                        $recordsContent = "";
+
+                        foreach ($records as $record) {
+                            $recordValues = [];
+
+                            foreach ($record as $value) {
+                                $recordValues[] = self::formatRecordValue($value);
+                            }
+
+                            $recordsContent .= "INSERT INTO {$tableName} VALUES (" . implode(', ', $recordValues) . ");\n";
+                        }
+                        $zip->addFromString($wpDBFolderNameInZip . $recordsFilename, $recordsContent);
+
+                        if ($password !== '') {
+                            $zip->setEncryptionName($wpDBFolderNameInZip . $recordsFilename, ZipArchive::EM_AES_256, $password);
+                        }
                     }
-                }
 
-                $offset += $batchSize;
-                $batchNumber++;
-            } while (!empty($records));
+                    $offset += $batchSize;
+                    $batchNumber++;
+                } while (!empty($records));
 
-            Azure_app_service_migration_Custom_Logger::logInfo(AASM_EXPORT_SERVICE_TYPE, 'Exporting Records for table: ' . $tableName . ' - completed');
+                $batchNumber = 0;
+                $offset = 0;
+
+                Azure_app_service_migration_Custom_Logger::logInfo(AASM_EXPORT_SERVICE_TYPE, 'Exporting Records for table: ' . $tableName . ' - completed');
+            }
+
+            if (!$completed) {
+                return false;
+            } else {
+                unset($params['start_db_table_records_index']);
+                unset($params['db_records_offset']);
+                unset($params['db_records_batchNumber']);
+                
+                return true;
+            }
         } catch (Exception $e) {
             Azure_app_service_migration_Custom_Logger::logError(AASM_EXPORT_SERVICE_TYPE, 'Table records export exception: ' . $e->getMessage());
             throw new AASM_Export_Exception('Table records export exception:' . $e->getMessage());
         }
+
+        return false;
     }
 
-    private function formatRecordValue($value)
+    private static function formatRecordValue($value)
     {
         try {
             if (is_null($value)) {
@@ -273,54 +481,78 @@ class Azure_app_service_migration_Export_FileBackupHandler
         }
     }
 
-    private function addFilesToZip($zip, $folderPath, $wpContentFolderNameInZip, $excludedFolders, $password)
+    private static function addFilesToZip($zip, $folderPath, $wpContentFolderNameInZip, $excludedFolders, $password, &$params)
     {
+        // Start time
+		$start = microtime( true );
+
+        // Initialize completed flag
+        $completed = true;
+        
+        if (!isset($params['status']['add_files_to_zip'])) {
+            Azure_app_service_migration_Custom_Logger::logInfo(AASM_EXPORT_SERVICE_TYPE, 'Zipping wp-content folder.');
+            $params['status']['add_files_to_zip'] = false;
+        }
+
+        // Return if zip archive was already created in previous sessions
+        if ($params['status']['add_files_to_zip']) {
+            return true;
+        }
+        
+        // Initialize enumerate file offset
+        if (!isset($params['enumerate_file_offset'])) {
+            $params['enumerate_file_offset'] = 0;
+        }
+        $enumerate_file_offset = $params['enumerate_file_offset'];
+
         try {
-            $iterator = new RecursiveDirectoryIterator($folderPath);
-            $filteredElements = [];
-            $filterIterator = new RecursiveCallbackFilterIterator($iterator, function ($current, $key, $iterator) use ($excludedFolders, &$filteredElements) {
-                return $this->filterCallback($current, $excludedFolders, $filteredElements);
-            });
+            // Open enumerate csv file
+            $csvFile = fopen(AASM_EXPORT_ENUMERATE_FILE, 'r');
+            if (!$csvFile) {
+                throw new Exception('Could not read enumerate csv file: ' . AASM_EXPORT_ENUMERATE_FILE);
+            }
 
-            $files = new RecursiveIteratorIterator($filterIterator);
-            $cntbatchSize = 100;
-            $batchNumber = 1;
-            $currentBatchFiles = [];
-            $currentFolder = null; // Variable to track the current folder being processed
+            // Seek to the specified offset
+            fseek($csvFile , $enumerate_file_offset);
 
-            foreach ($files as $name => $file) {
-                if (!$file->isDir()) {
-                    $filePath = $file->getRealPath();
-                    $relativePath = substr($filePath, strlen($folderPath)+-1);
-                    $currentBatchFiles[] = [
-                        'path' => $filePath,
-                        'relativePath' => $relativePath,
-                    ];
-
-                    $folder = $relativePath;
-                    if ($currentFolder !== $folder) {
-                        $currentFolder = $folder;
-                        Azure_app_service_migration_Custom_Logger::logInfo(AASM_EXPORT_SERVICE_TYPE, 'Exporting from wp-content path: ' . $currentFolder);
-                    }
-
-                    if (count($currentBatchFiles) >= $cntbatchSize) {
-                        $this->addFilesToZipBatch($zip, $currentBatchFiles, $wpContentFolderNameInZip, $password, $batchNumber);
-                        $batchNumber++;
-                        $currentBatchFiles = [];
-                    }
+            $currentOffset = $enumerate_file_offset;
+            while (($row = fgetcsv($csvFile)) !== false) {
+                
+                $index = $row[0];
+                $filePath = $row[1];
+                $relativePath = $row[2];
+                
+                if (file_exists($filePath) && is_file($filePath)) {
+                    $fileContents = file_get_contents($filePath);
+                    $zip->addFromString($relativePath, $fileContents);
+                }
+                
+                // Exit if time exceeds 10 seconds
+                if ( ( microtime( true ) - $start ) > 10 ) {
+                    $currentOffset = ftell($csvFile);
+                    $completed = false;
+                    break;
                 }
             }
 
-            if (!empty($currentBatchFiles)) {
-                $this->addFilesToZipBatch($zip, $currentBatchFiles, $wpContentFolderNameInZip, $password, $batchNumber);
+            if (!$completed) {
+                $params['enumerate_file_offset'] = $currentOffset;
+                return false;
             }
-        } catch (Exception $e) {
-            Azure_app_service_migration_Custom_Logger::logError(AASM_EXPORT_SERVICE_TYPE, 'Failing to add the file to ZipArchive: ' . $e->getMessage());
-            throw new AASM_Archive_Exception('Failing to add the file to ZipArchive: ' . $e->getMessage());
+
+            // Update params
+            $params['status']['add_files_to_zip'] = true;
+            unset($params['enumerate_file_offset']);
+            return true;
+        } catch (Exception $ex) {
+            Azure_app_service_migration_Custom_Logger::logError(AASM_EXPORT_SERVICE_TYPE, 'Failed to zip wp-content: ' . $e->getMessage());
+            throw new AASM_Archive_Exception('Failed to extract wp-content: ' . $e->getMessage());
         }
+        
+        return false;
     }
 
-    private function filterCallback($current, $excludedFolders, &$filteredElements)
+    private static function filterCallback($current, $excludedFolders, &$filteredElements)
     {
         $fileName = $current->getFilename();
         $filePath = $current->getPathname();
@@ -343,24 +575,6 @@ class Azure_app_service_migration_Export_FileBackupHandler
 
         $filteredElements[] = $relativePath;
         return true;
-    }
-
-    private function addFilesToZipBatch($zip, $currentBatchFiles, $wpContentFolderNameInZip, $password, $batchNumber)
-    {
-        try {
-            foreach ($currentBatchFiles as $file) {
-                $path = $file['path'];
-                $relativePath = $file['relativePath'];
-                $zip->addFile($path, $wpContentFolderNameInZip . $relativePath);
-
-                if ($password !== '') {
-                    $zip->setEncryptionName($wpContentFolderNameInZip . $relativePath, ZipArchive::EM_AES_256, $password);
-                }
-            }
-        } catch (Exception $e) {
-            Azure_app_service_migration_Custom_Logger::logError(AASM_EXPORT_SERVICE_TYPE, 'Failing to add the file to ZipArchive during batch: ' . $e->getMessage());
-            throw new AASM_Archive_Exception('Failing to add the file to ZipArchive during batch:' . $e->getMessage());
-        }
     }
 }
 ?>
