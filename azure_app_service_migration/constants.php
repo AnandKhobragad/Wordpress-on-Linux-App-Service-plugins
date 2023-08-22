@@ -26,6 +26,9 @@ define( 'AASM_IMPORT_ZIP_LOCATION', substr(AZURE_APP_SERVICE_MIGRATION_PLUGIN_PA
 define( 'AASM_EXPORT_ZIP_LOCATION', substr(AZURE_APP_SERVICE_MIGRATION_PLUGIN_PATH, 0, -1) . DIRECTORY_SEPARATOR . 
                                     'ExportedFile' . DIRECTORY_SEPARATOR);
 
+define( 'AASM_EXPORT_ENUMERATE_FILE', substr(AZURE_APP_SERVICE_MIGRATION_PLUGIN_PATH, 0, -1) . DIRECTORY_SEPARATOR . 
+'ExportedFile' . DIRECTORY_SEPARATOR . 'content_enumerate.csv');
+
 // ================
 // = Import Zip File Storage Path =
 // ================
@@ -58,6 +61,12 @@ define( 'AASM_PLUGIN_RELATIVE_PATH_IN_ZIP', 'wp-content' . DIRECTORY_SEPARATOR .
 // ================
 define( 'AASM_DATABASE_TEMP_DIR', AZURE_APP_SERVICE_MIGRATION_PLUGIN_PATH . 'storage' . 
                                 DIRECTORY_SEPARATOR . 'dbtempdir' . DIRECTORY_SEPARATOR );
+
+// ================
+// = Directory to extract sql files to =
+// ================
+define( 'AASM_DATABASE_SQL_DIR', AASM_DATABASE_TEMP_DIR . 'wp-database' . 
+                                DIRECTORY_SEPARATOR );
 
 // ================
 // = Uploads folder path =
@@ -141,3 +150,10 @@ define( 'AASM_IMPORT_LOGFILE_PATH', substr(AZURE_APP_SERVICE_MIGRATION_PLUGIN_PA
 // ==============
 define( 'AASM_EXPORT_LOGFILE_PATH', substr(AZURE_APP_SERVICE_MIGRATION_PLUGIN_PATH, 0, -1) . DIRECTORY_SEPARATOR . 'Logs' . 
                                     DIRECTORY_SEPARATOR . 'export_log.txt');
+
+// ==============
+// = AASM plugin relative path to abspath =
+// ==============
+define( 'AASM_PLUGIN_RELATIVE_PATH', 'wp-content' . DIRECTORY_SEPARATOR . 
+                                    'plugins' . DIRECTORY_SEPARATOR . 
+                                    AASM_PLUGIN_NAME . DIRECTORY_SEPARATOR);

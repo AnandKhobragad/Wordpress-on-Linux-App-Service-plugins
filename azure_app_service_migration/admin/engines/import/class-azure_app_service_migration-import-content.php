@@ -63,7 +63,7 @@ class Azure_app_service_migration_Import_Content {
 
         $params['completed'] = $extract_result['completed'];
 
-        if (params['completed']) {
+        if ($params['completed']) {
             $params['priority'] = 20;
             // remove import-content specific params if completed
             unset($params['zip_start_index']);
@@ -141,7 +141,6 @@ class Azure_app_service_migration_Import_Content {
             } catch(Exception $ex) {
                 Azure_app_service_migration_Custom_Logger::handleException($ex);
             }
-            
         }
     }
 

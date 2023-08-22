@@ -53,7 +53,7 @@ class Azure_app_service_migration_Import_Controller {
 					}
 
 					// exit after the last function of import process is completed
-					if ($params['priority'] == 20 && $params['completed']) {
+					if ($params['priority'] == 40 && $params['completed']) {
 						Azure_app_service_migration_Custom_Logger::logInfo(AASM_IMPORT_SERVICE_TYPE, 'Import successfully completed.', true);
 						exit;
 					}
@@ -79,7 +79,7 @@ class Azure_app_service_migration_Import_Controller {
 
 	public static function base_import($params) {
 		$import_file_path = AASM_IMPORT_ZIP_LOCATION . 'importfile.zip';
-
+		
 		// delete existing log file
 		Azure_app_service_migration_Custom_Logger::delete_log_file(AASM_IMPORT_SERVICE_TYPE);
         

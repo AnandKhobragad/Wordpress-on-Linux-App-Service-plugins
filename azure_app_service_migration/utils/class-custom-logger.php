@@ -20,7 +20,7 @@ class Azure_app_service_migration_Custom_Logger
 
         // Create the log file if it doesn't exist
         if (!file_exists($log_file)) {
-            file_put_contents($log_file, 'Azure App Service Migration IMPORT Logs' . PHP_EOL . PHP_EOL);
+            file_put_contents($log_file, 'Azure App Service Migration' . $service_type . 'Logs' . PHP_EOL . PHP_EOL);
         }
     }
 
@@ -65,9 +65,8 @@ class Azure_app_service_migration_Custom_Logger
         if ($echo_status) {
             $migration_status = array( 'status' => 'error', 'message' => $error_message );
             echo json_encode($migration_status);
-
-            wp_die();
         }
+        wp_die();
     }
 
     // Custom error handler

@@ -68,13 +68,18 @@ class AASM_Zip_Extractor {
                 }
             }
 
+            // database sql files should not be excluded 
+            if (str_starts_with( $filename, AASM_DATABASE_RELATIVE_PATH_IN_ZIP)) {
+                $should_exclude_file = false;
+            }
+
             if ($should_exclude_file === false) {
                 $path_file = $this->replace_forward_slash_with_directory_separator($destination_dir);
                 if (str_starts_with($filename, AASM_DATABASE_RELATIVE_PATH_IN_ZIP)) {
                     $path_file = $this->replace_forward_slash_with_directory_separator(AASM_DATABASE_TEMP_DIR);
                 }
                 
-                $new_dir = dirname($path_file);
+                $new_dir = dirname($path_file . $filename);
                 if (!str_ends_with($new_dir, DIRECTORY_SEPARATOR)) {
                     $new_dir .= DIRECTORY_SEPARATOR;
                 }

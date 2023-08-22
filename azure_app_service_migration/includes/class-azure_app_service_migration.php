@@ -140,9 +140,14 @@ class Azure_app_service_migration
         require_once plugin_dir_path(dirname(__FILE__)) . 'admin/engines/export/class-azure_app_service_migration-export-filebackup-handler.php';
 
         /**
-        +        * The class responsible for calling all actions for Import.
+                * The class responsible for calling all actions for Import.
+                */
+        require_once plugin_dir_path(dirname(__FILE__)) . 'admin/engines/class-azure_app_service_migration-import-controller.php';
+
+        /**
+        +        * The class responsible for calling all actions for Export.
         +        */
-        +require_once plugin_dir_path(dirname(__FILE__)) . 'admin/engines/class-azure_app_service_migration-import-controller.php';
+        +require_once plugin_dir_path(dirname(__FILE__)) . 'admin/engines/class-azure_app_service_migration-export.php';
 
         /**
         +        * The class responsible for defining actions for wp-content import.
@@ -236,19 +241,21 @@ class Azure_app_service_migration
 
         $this->loader->add_action('admin_enqueue_scripts', $plugin_admin, 'enqueue_styles');
         $this->loader->add_action('admin_enqueue_scripts', $plugin_admin, 'enqueue_scripts');
+        
         // action hook for admin menu
         $this->loader->add_action('admin_menu', $plugin_admin, 'azure_app_service_migration_menu');
+        
         // Register the AJAX handler
         $ajaxHandler = new Azure_app_service_migration_Export_AjaxHandler();
         $this->loader->add_action('wp_ajax_admin_ajax_request', $ajaxHandler, 'handle_ajax_requests_admin');
 
         $importaxHandler = new Azure_app_service_migration_Import_FileBackupHandler();
         
-        $this->loader->add_action('wp_ajax_handle_upload_chunk', 'Azure_app_service_migration_Import_FileBackupHandler::handle_upload_chunk');
+        add_action('wp_ajax_handle_upload_chunk', 'Azure_app_service_migration_Import_FileBackupHandler::handle_upload_chunk');
 
-        $this->loader->add_action('wp_ajax_handle_combine_chunks', 'Azure_app_service_migration_Import_FileBackupHandler::handle_combine_chunks');
+        add_action('wp_ajax_handle_combine_chunks', 'Azure_app_service_migration_Import_FileBackupHandler::handle_combine_chunks');
 
-        $this->loader->add_action('wp_ajax_delete_chunks', 'Azure_app_service_migration_Import_FileBackupHandler::delete_chunks');
+        add_action('wp_ajax_delete_chunks', 'Azure_app_service_migration_Import_FileBackupHandler::delete_chunks');
 
         // Register status update AJAX handler
         $statusUpdateHandler = new Azure_app_service_migration_Import_AjaxHandler();
@@ -258,10 +265,17 @@ class Azure_app_service_migration
         add_action('wp_ajax_aasm_import','Azure_app_service_migration_Import_Controller::import');
         add_action('wp_ajax_nopriv_aasm_import', 'Azure_app_service_migration_Import_Controller::import');
 
+        // register export ajax handler
+        add_action('wp_ajax_aasm_export','Azure_app_service_migration_Export::export');
+        add_action('wp_ajax_nopriv_aasm_export', 'Azure_app_service_migration_Export::export');
+
         // register function hooks for import
         add_filter( 'aasm_import', 'Azure_app_service_migration_Import_FileBackupHandler::handle_combine_chunks', 5 );
 		add_filter( 'aasm_import', 'Azure_app_service_migration_Import_Content::import_content', 10 );
+        add_filter( 'aasm_import', 'Azure_app_service_migration_Import_Database::import_database', 20 );
 
+        // register function hooks for export
+        add_filter( 'aasm_export', 'Azure_app_service_migration_Export_FileBackupHandler::handle_wp_filebackup', 5 );
     }
 
     /**

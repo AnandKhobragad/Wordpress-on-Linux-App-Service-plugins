@@ -14,20 +14,29 @@ class AASM_Common_Utils {
     }
 
     public static function clear_directory_recursive($directoryPath) {
+        // Remove trailing '/'
+        if (str_ends_with($directoryPath, DIRECTORY_SEPARATOR)) {                                                                      
+            $directoryPath = substr($directoryPath, 0, -1);                                                                        
+        }
+        
         // Retrieve list of files and directories in the directory
-        $files = glob($directoryPath . '/*');
+        $files = scandir($directoryPath);
       
         // Iterate over each file or directory
         foreach ($files as $file) {
-            if (is_file($file)) {
-                unlink($file);
-            } elseif (is_dir($file)) {
-                // Recursively clear subdirectory
-                clear_directory($file);
-                // Remove empty subdirectory
-                rmdir($file);
+            if ($file !== '.' && $file !== '..') {
+                $path = $directoryPath . DIRECTORY_SEPARATOR . $file;
+                if (is_file($path)) {
+                    unlink($path);
+                } elseif (is_dir($path)) {
+                    // Recursively clear subdirectory
+                    clear_directory_recursive( $path);
+                    // Remove empty subdirectory
+                    rmdir($path);
+                }
             }
         }
+        rmdir($directoryPath);
     }
 
     public static function replace_forward_slash_with_directory_separator ( $dir ) {

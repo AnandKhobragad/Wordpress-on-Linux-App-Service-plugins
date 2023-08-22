@@ -17,8 +17,9 @@ jQuery(function ($) {
 		$(this).prop("disabled", true).text("Generating Export...");
 	
 		var postdata = $("#frm-chkbox-data").serialize();
-		postdata += "&action=admin_ajax_request&param=wp_filebackup";
-	
+		postdata += "&action=aasm_export&param=wp_filebackup";
+		postdata += "&is_first_request=true";
+
 		$.ajax({
 			url: ajaxurl,
 			type: "POST",
@@ -39,7 +40,7 @@ jQuery(function ($) {
 			error: function (jqXHR, textStatus, errorThrown) {
 				console.log("AJAX request failed: " + textStatus + ", " + errorThrown);
 				showAlert("An error occurred while processing the request.");
-				$('#downloadLink').show().css('display', 'inline-block');;
+				$('#downloadLink').show().css('display', 'inline-block');
 			},
 			complete: function () {
 				$("#generatefile").prop("disabled", false).text("Generate Export File");
