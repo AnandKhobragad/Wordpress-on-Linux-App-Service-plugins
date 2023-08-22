@@ -2,16 +2,9 @@
 // TO DO: This file will be redundant and needs to be deleted once batch processing is implemented for import
 class AASM_Zip_Extractor {
     private $zip_path = null;
-    private $file_handle = null;
-    private $eof = null;
 
     public function __construct( $zip_file_name ) {
         $this->zip_path = $zip_file_name;
-        
-        /*// Open input zip file for reading
-        if ( ( $this->file_handle = @fopen( $zip_file_name, 'rb' ) ) === false ) {
-            throw new AASM_File_Not_Found_Exception( "File Not Found: Couldn't find file at " . $zip_file_name );
-        }*/
     }
     
     public function extract( $destination_dir, $files_to_exclude = [], $zip_start_index ) {
@@ -33,7 +26,6 @@ class AASM_Zip_Extractor {
         } catch ( Exception $ex ) {
             throw $ex;
         }
-        Azure_app_service_migration_Custom_Logger::logInfo(AASM_IMPORT_SERVICE_TYPE, 'finished reading zip file', true);
 
         // initialize completed flag
         $completed = true;
@@ -45,7 +37,6 @@ class AASM_Zip_Extractor {
         $last_zip_index = $zip_start_index;
 
         for ($i = $zip_start_index; $i<$zip_num_files; $i++) {
-            Azure_app_service_migration_Custom_Logger::logInfo(AASM_IMPORT_SERVICE_TYPE, 'Reading zip file index: ' . strval($i), true);
             // break when timeout (20s) is reached
             if ( ( microtime( true ) - $start ) > 20 ) {
                 $last_zip_index = $i;
@@ -74,6 +65,7 @@ class AASM_Zip_Extractor {
             }
 
             if ($should_exclude_file === false) {
+                Azure_app_service_migration_Custom_Logger::logInfo(AASM_IMPORT_SERVICE_TYPE, 'Extractin file: ' . $filename, true);
                 $path_file = $this->replace_forward_slash_with_directory_separator($destination_dir);
                 if (str_starts_with($filename, AASM_DATABASE_RELATIVE_PATH_IN_ZIP)) {
                     $path_file = $this->replace_forward_slash_with_directory_separator(AASM_DATABASE_TEMP_DIR);

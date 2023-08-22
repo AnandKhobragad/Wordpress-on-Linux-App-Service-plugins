@@ -150,6 +150,11 @@ class Azure_app_service_migration
         +require_once plugin_dir_path(dirname(__FILE__)) . 'admin/engines/class-azure_app_service_migration-export.php';
 
         /**
+        +        * The class responsible for calling all actions for Export.
+        +        */
+        +require_once plugin_dir_path(dirname(__FILE__)) . 'admin/engines/class-azure_app_service_migration-export.php';
+
+        /**
         +        * The class responsible for defining actions for wp-content import.
         +        */
         +require_once plugin_dir_path(dirname(__FILE__)) . 'admin/engines/import/class-azure_app_service_migration-import-content.php';
@@ -175,6 +180,11 @@ class Azure_app_service_migration
         /**
          * The class responsible for handling the import filebackup
          */require_once plugin_dir_path(dirname(__FILE__)) . 'admin/engines/import/class-azure_app_service_migration-import-filebackup-handler.php';
+
+        /**
+         * The class responsible for handling status
+         */
+        require_once plugin_dir_path(dirname(__FILE__)) . 'admin/engines/class-azure_app_service_migration-status.php';
 
         /**
         +        * The class responsible for defining database helper functions.
@@ -250,7 +260,7 @@ class Azure_app_service_migration
         $this->loader->add_action('wp_ajax_admin_ajax_request', $ajaxHandler, 'handle_ajax_requests_admin');
 
         $importaxHandler = new Azure_app_service_migration_Import_FileBackupHandler();
-        
+
         add_action('wp_ajax_handle_upload_chunk', 'Azure_app_service_migration_Import_FileBackupHandler::handle_upload_chunk');
 
         add_action('wp_ajax_handle_combine_chunks', 'Azure_app_service_migration_Import_FileBackupHandler::handle_combine_chunks');
@@ -276,6 +286,10 @@ class Azure_app_service_migration
 
         // register function hooks for export
         add_filter( 'aasm_export', 'Azure_app_service_migration_Export_FileBackupHandler::handle_wp_filebackup', 5 );
+
+        // register migration status actions
+        add_action( 'wp_ajax_aasm_import_status', 'Azure_app_service_migration_Status::import_status');
+        add_action( 'wp_ajax_aasm_export_status', 'Azure_app_service_migration_Status::export_status');
     }
 
     /**

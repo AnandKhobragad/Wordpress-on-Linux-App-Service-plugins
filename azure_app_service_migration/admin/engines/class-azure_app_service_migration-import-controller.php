@@ -24,10 +24,18 @@ class Azure_app_service_migration_Import_Controller {
 		if ( ! isset( $params['priority'] ) ) {
 			$params['priority'] = 5;
 		}
+
+		if (isset($params['is_first_request']) && !$params['is_first_request']) {
+			Azure_app_service_migration_Custom_Logger::logInfo(AASM_IMPORT_SERVICE_TYPE, 'Starting a new HTTP session.', true);
+		}
 		
 		if ( isset($params['is_first_request']) && $params['is_first_request']) {
 			// initalize import log file
+			Azure_app_service_migration_Custom_Logger::delete_log_file(AASM_IMPORT_SERVICE_TYPE);
 			Azure_app_service_migration_Custom_Logger::init(AASM_IMPORT_SERVICE_TYPE);
+
+			//initialize status file
+			AASM_Common_Utils::initialize_status_file(AASM_IMPORT_SERVICE_TYPE);
 			
 			// clear DB temp directory
 			AASM_Common_Utils::clear_directory_recursive(AASM_DATABASE_TEMP_DIR);
@@ -54,7 +62,7 @@ class Azure_app_service_migration_Import_Controller {
 
 					// exit after the last function of import process is completed
 					if ($params['priority'] == 40 && $params['completed']) {
-						Azure_app_service_migration_Custom_Logger::logInfo(AASM_IMPORT_SERVICE_TYPE, 'Import successfully completed.', true);
+						Azure_app_service_migration_Custom_Logger::done(AASM_IMPORT_SERVICE_TYPE);
 						exit;
 					}
 				
@@ -76,25 +84,4 @@ class Azure_app_service_migration_Import_Controller {
 			}
 		}		
     }
-
-	public static function base_import($params) {
-		$import_file_path = AASM_IMPORT_ZIP_LOCATION . 'importfile.zip';
-		
-		// delete existing log file
-		Azure_app_service_migration_Custom_Logger::delete_log_file(AASM_IMPORT_SERVICE_TYPE);
-        
-		// Initialize log file
-		Azure_app_service_migration_Custom_Logger::init(AASM_IMPORT_SERVICE_TYPE);
-
-		//Import wp-content
-		$aasm_import_wpcontent = new Azure_app_service_migration_Import_Content($import_file_path, $params);
-		$aasm_import_wpcontent->import_content();
-
-		//Import database
-		$aasm_import_database = new Azure_app_service_migration_Import_Database($import_file_path, $params);
-		$aasm_import_database->import_database();
-
-		// Log Import completion status and update status option in database
-		Azure_app_service_migration_Custom_Logger::done(AASM_IMPORT_SERVICE_TYPE);
-	}
 }
