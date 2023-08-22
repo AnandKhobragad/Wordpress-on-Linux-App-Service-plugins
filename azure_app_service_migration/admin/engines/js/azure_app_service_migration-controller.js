@@ -50,7 +50,6 @@ jQuery(function ($) {
 			}
 		});
 	});
-	
   
 	function showAlert(message) {
 		var alertBox = document.querySelector('.alert-container');
@@ -101,12 +100,13 @@ jQuery(function ($) {
 		  },
 		  success: function(response) {
 			if (response.status === 'done' ) {
-				showAlert(data.message);
+				("#generatefile").prop("disabled", false).text("Generate Export File"); 
+				showAlert("Export Completed!");
 			}
 			else if (!(response.status === 'exception') && !(response.status === 'error')) {
 				setTimeout(function() {
 					getExportStatus(0);
-				},2000);				
+				},2000);
 			}
 		  },
 		  error: function(xhr, status, error) {
