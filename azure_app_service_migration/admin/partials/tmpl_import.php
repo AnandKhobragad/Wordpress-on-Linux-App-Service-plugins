@@ -95,7 +95,7 @@ $reducedSize = (int) $trimmedSize * 0.5; // Convert the trimmed size to an integ
           fileInfo.textContent = response.message;
         }
 
-        if (!(response.status === 'exception') && !(response.status === 'error') || !(response.status === 'done')) {
+        if (!(response.status === 'exception') && !(response.status === 'error') && !(response.status === 'done')) {
           setTimeout(function() {
             getMigrationStatus(0);
           }, 2000);
