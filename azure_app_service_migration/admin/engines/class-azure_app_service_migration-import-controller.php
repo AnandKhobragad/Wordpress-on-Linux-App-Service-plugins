@@ -35,7 +35,7 @@ class Azure_app_service_migration_Import_Controller {
 			Azure_app_service_migration_Custom_Logger::init(AASM_IMPORT_SERVICE_TYPE);
 
 			//initialize status file
-			self::initialize_status_file();
+			AASM_Common_Utils::initialize_status_file(AASM_IMPORT_SERVICE_TYPE);
 			
 			// clear DB temp directory
 			AASM_Common_Utils::clear_directory_recursive(AASM_DATABASE_TEMP_DIR);
@@ -84,18 +84,4 @@ class Azure_app_service_migration_Import_Controller {
 			}
 		}		
     }
-
-	private static function initialize_status_file() {
-		if (file_exists(AASM_IMPORT_STATUSFILE_PATH))
-			unlink(AASM_IMPORT_STATUSFILE_PATH);
-		
-		// open statusfile
-		$statusFile = fopen(AASM_IMPORT_STATUSFILE_PATH, 'w');
-		
-		// write status
-		fputcsv($statusFile, ['info', 'Exporting...']);
-		
-		// close file
-		fclose($statusFile);
-	}
 }

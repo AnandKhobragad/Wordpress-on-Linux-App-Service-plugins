@@ -82,30 +82,29 @@ $reducedSize = (int) $trimmedSize * 0.5; // Convert the trimmed size to an integ
       type: 'POST',
       dataType: 'json',
       data: {
-        action: 'wp_ajax_aasm_import_status', // Adjust the server-side action name
+        action: 'aasm_import_status', // Adjust the server-side action name
       },
       success: function(response) {
         // Handle the success response after combining the chunks
         console.log(response);
         
-        // Currently updating the statusText Value
+        // Currently updating the fileInfo Value
         if (response.status === 'info' || response.status === 'error' || response.status === 'exception' || response.status === 'done')
         {
           // Update status text value
-          statusText.textContent = response.message;
+          fileInfo.textContent = response.message;
         }
 
-        if (!(response.status === 'exception') && !(response.status === 'error')) {
-          getMigrationStatus(0);
+        if (!(response.status === 'exception') && !(response.status === 'error') || !(response.status === 'done')) {
+          setTimeout(function() {
+            getMigrationStatus(0);
+          }, 2000);
         }
       },
       error: function(xhr, status, error) {
         // Retry the updateStatus call if the maximum number of retries is not reached
         if (retryCount < maxRetryCount) {
           getMigrationStatus(retryCount+1);
-        } else {
-          // Max retries reached, display error message
-          statusText.textContent = 'Failed to connect to server. Import can still be in progress';
         }
       }
     });
@@ -220,7 +219,7 @@ function combineChunksWithRetry(
     },    
     complete: function() {
       document.getElementById('btnImportfile').disabled = false;      
-      $('#downloadLink').show().css('display', 'inline-block');;
+      $('#downloadLink').show().css('display', 'inline-block');
     },
   });
 }

@@ -30,8 +30,8 @@ class Azure_app_service_migration_Export {
 			// initalize import log file
 			Azure_app_service_migration_Custom_Logger::delete_log_file(AASM_EXPORT_SERVICE_TYPE);			
 			Azure_app_service_migration_Custom_Logger::init(AASM_EXPORT_SERVICE_TYPE);
-			Azure_app_service_migration_Custom_Logger::logInfo(AASM_EXPORT_SERVICE_TYPE, 'Started with the export process.');
-			
+			Azure_app_service_migration_Custom_Logger::logInfo(AASM_EXPORT_SERVICE_TYPE, 'Starting Export.');
+
 			$params['password'] = isset($_REQUEST['confpassword']) ? $_REQUEST['confpassword'] : "";
 			$params['dontexptpostrevisions'] = isset($_REQUEST['dontexptpostrevisions']) ? $_REQUEST['dontexptpostrevisions'] : "";
 			$params['dontexptsmedialibrary'] = isset($_REQUEST['dontexptsmedialibrary']) ? $_REQUEST['dontexptsmedialibrary'] : "";
@@ -45,6 +45,9 @@ class Azure_app_service_migration_Export {
 				Azure_app_service_migration_Custom_Logger::logInfo(AASM_EXPORT_SERVICE_TYPE, 'Deleting the previously generated enumerate csv file.');
 				unlink(AASM_EXPORT_ENUMERATE_FILE);
 			}
+
+			//initialize status file
+			AASM_Common_Utils::initialize_status_file(AASM_EXPORT_SERVICE_TYPE);
 
 			Azure_app_service_migration_Custom_Logger::logInfo(AASM_EXPORT_SERVICE_TYPE, 'Deleting the previously generated exported file.');
 			Azure_app_service_migration_Export_FileBackupHandler::deleteExistingZipFiles();
@@ -78,7 +81,7 @@ class Azure_app_service_migration_Export {
 
 					// exit after export process is completed
 					if ($params['completed']) {
-						Azure_app_service_migration_Custom_Logger::logInfo(AASM_EXPORT_SERVICE_TYPE, 'Export successfully completed.', true);
+						Azure_app_service_migration_Custom_Logger::done(AASM_EXPORT_SERVICE_TYPE);
 						exit;
 					}
 

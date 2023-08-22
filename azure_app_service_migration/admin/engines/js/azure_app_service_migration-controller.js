@@ -27,12 +27,15 @@ jQuery(function ($) {
 			dataType: "json",
 			success: function (data) {
 				console.log(data);
+				//start getting export status 
+				getExportStatus(0);
+
 				if (data.status == 1) {
 					showAlert(data.message);
 					$("#exportdownloadfile").show();
 					$('#downloadLink').show().css('display', 'inline-block');
 					blinkElement("#exportdownloadfile");
-					$('#exportdownloadfile').load(window.location.href + ' #exportdownloadfile');
+					$('#exportdownloadfile').load(window.location.href + ' #exportdownloadfile');					
 				} else {
 					showAlert(data.message);
 				}
@@ -94,24 +97,22 @@ jQuery(function ($) {
 		  type: 'POST',
 		  dataType: 'json',
 		  data: {
-			action: 'wp_ajax_aasm_export_status', // Adjust the server-side action name
+			action: 'aasm_export_status', // Adjust the server-side action name
 		  },
 		  success: function(response) {
 			if (response.status === 'done' ) {
 				showAlert(data.message);
 			}
-	
-			if (!(response.status === 'exception') && !(response.status === 'error') && !(response.status === 'done')) {
-				getExportStatus(0);
+			else if (!(response.status === 'exception') && !(response.status === 'error')) {
+				setTimeout(function() {
+					getExportStatus(0);
+				},2000);				
 			}
 		  },
 		  error: function(xhr, status, error) {
 			// Retry the updateStatus call if the maximum number of retries is not reached
 			if (retryCount < maxRetryCount) {
 				getExportStatus(retryCount+1);
-			} else {
-			  // Max retries reached, display error message
-			  statusText.textContent = 'Failed to connect to server. Export can still be in progress';
 			}
 		  }
 		});

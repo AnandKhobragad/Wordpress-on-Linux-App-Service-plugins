@@ -182,6 +182,11 @@ class Azure_app_service_migration
          */require_once plugin_dir_path(dirname(__FILE__)) . 'admin/engines/import/class-azure_app_service_migration-import-filebackup-handler.php';
 
         /**
+         * The class responsible for handling status
+         */
+        require_once plugin_dir_path(dirname(__FILE__)) . 'admin/engines/class-azure_app_service_migration-status.php';
+
+        /**
         +        * The class responsible for defining database helper functions.
         +        */
         +require_once plugin_dir_path(dirname(__FILE__)) . 'utils/class-database_manager.php';
@@ -255,7 +260,7 @@ class Azure_app_service_migration
         $this->loader->add_action('wp_ajax_admin_ajax_request', $ajaxHandler, 'handle_ajax_requests_admin');
 
         $importaxHandler = new Azure_app_service_migration_Import_FileBackupHandler();
-        
+
         add_action('wp_ajax_handle_upload_chunk', 'Azure_app_service_migration_Import_FileBackupHandler::handle_upload_chunk');
 
         add_action('wp_ajax_handle_combine_chunks', 'Azure_app_service_migration_Import_FileBackupHandler::handle_combine_chunks');

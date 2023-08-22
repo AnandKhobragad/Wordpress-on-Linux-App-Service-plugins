@@ -30,7 +30,7 @@ class AASM_Common_Utils {
                     unlink($path);
                 } elseif (is_dir($path)) {
                     // Recursively clear subdirectory
-                    clear_directory_recursive( $path);
+                    self::clear_directory_recursive( $path);
                     // Remove empty subdirectory
                     rmdir($path);
                 }
@@ -82,5 +82,23 @@ class AASM_Common_Utils {
             $headers['Authorization'] = sprintf( 'Basic %s', $hash );
         }
         return $headers;
-    }	
+    }
+
+    private static function initialize_status_file($serviceType) {
+        $statusFilePath = $serviceType === AASM_IMPORT_SERVICE_TYPE
+                        ? AASM_IMPORT_STATUSFILE_PATH
+                        : AASM_EXPORT_STATUSFILE_PATH;
+
+		if (file_exists($statusFilePath))
+			unlink($statusFilePath);
+		
+		// open statusfile
+		$statusFile = fopen($statusFilePath, 'w');
+		
+		// write status
+		fputcsv($statusFile, ['info', 'Importing...']);
+		
+		// close file
+		fclose($statusFile);
+	}
 }
