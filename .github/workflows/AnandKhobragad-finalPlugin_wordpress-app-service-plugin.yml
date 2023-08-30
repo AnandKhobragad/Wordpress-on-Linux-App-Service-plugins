@@ -23,14 +23,14 @@ jobs:
       uses: docker/login-action@v2
       with:
         registry: https://mcr.microsoft.com/
-        username: ${{ secrets.AzureAppService_ContainerUsername_986b1c0a4a8242b5b76a3d74694a44c2 }}
-        password: ${{ secrets.AzureAppService_ContainerPassword_2a85279b0958461cbde876b692a72d83 }}
+        username: ${{ secrets.AzureAppService_ContainerUsername_beb3b80fb28f444cb39550028c0ce3fb }}
+        password: ${{ secrets.AzureAppService_ContainerPassword_633d8ded0ae741b6906137536a744b09 }}
 
     - name: Build and push container image to registry
       uses: docker/build-push-action@v3
       with:
         push: true
-        tags: mcr.microsoft.com/${{ secrets.AzureAppService_ContainerUsername_986b1c0a4a8242b5b76a3d74694a44c2 }}/appsvc/wordpress-alpine-php:${{ github.sha }}
+        tags: mcr.microsoft.com/${{ secrets.AzureAppService_ContainerUsername_beb3b80fb28f444cb39550028c0ce3fb }}/appsvc/wordpress-alpine-php:${{ github.sha }}
         file: ./Dockerfile
 
   deploy:
@@ -47,5 +47,5 @@ jobs:
       with:
         app-name: 'wordpress-app-service-plugin'
         slot-name: 'production'
-        publish-profile: ${{ secrets.AzureAppService_PublishProfile_237f8a9094424de8bd3222c793fc8ae9 }}
-        images: 'mcr.microsoft.com/${{ secrets.AzureAppService_ContainerUsername_986b1c0a4a8242b5b76a3d74694a44c2 }}/appsvc/wordpress-alpine-php:${{ github.sha }}'
+        publish-profile: ${{ secrets.AzureAppService_PublishProfile_5f6862985c45492a991a7aa19787df9b }}
+        images: 'mcr.microsoft.com/${{ secrets.AzureAppService_ContainerUsername_beb3b80fb28f444cb39550028c0ce3fb }}/appsvc/wordpress-alpine-php:${{ github.sha }}'
